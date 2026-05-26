@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://writeagent.local/schemas/format_report.schema.json",
+  "title": "FormatReport",
+  "description": "Skill 5（学术格式排版与规范校验）的输出。由李泓铮负责完整实现，本仓库给出接口契约。",
+  "type": "object",
+  "required": ["normalized_draft", "issues"],
+  "properties": {
+    "normalized_draft": {
+      "type": "object",
+      "description": "格式标准化后的论文（结构与 PaperDraft 一致）",
+      "required": ["sections"],
+      "properties": {
+        "abstract": { "type": "string" },
+        "sections": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "export_paths": {
+      "type": "object",
+      "properties": {
+        "docx": { "type": "string" },
+        "pdf": { "type": "string" },
+        "markdown": { "type": "string" }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "description": "校验报告：发现的问题清单",
+      "items": {
+        "type": "object",
+        "required": ["category", "location", "severity", "message"],
+        "properties": {
+          "category": { "type": "string", "enum": ["heading", "font", "spacing", "figure", "table", "citation", "bibliography", "other"] },
+          "location": { "type": "string", "description": "如 section 2.1 / 表 3" },
+          "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+          "message": { "type": "string" },
+          "suggestion": { "type": "string" }
+        }
+      }
+    }
+  }
+}

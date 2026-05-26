@@ -1,0 +1,640 @@
+{
+  "keywords": [
+    "大语言模型 Agent",
+    "学术写作辅助",
+    "工具编排",
+    "需求结构化与选题定位",
+    "文献梳理与引用规范",
+    "大纲生成与正文撰写",
+    "格式校验与语言润色"
+  ],
+  "papers": [
+    {
+      "id": "yao2022react",
+      "type": "preprint",
+      "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+      "authors": [
+        "Shunyu Yao",
+        "Jeffrey Zhao",
+        "Dian Yu",
+        "Nan Du",
+        "Izhak Shafran",
+        "Karthik Narasimhan",
+        "Yuan Cao"
+      ],
+      "year": 2022,
+      "venue": "arXiv preprint arXiv:2210.03629",
+      "doi": "10.48550/arXiv.2210.03629",
+      "url": "https://arxiv.org/abs/2210.03629",
+      "abstract": "We propose ReAct, a paradigm that interleaves chain-of-thought reasoning with task-specific actions to enable large language models to act as autonomous agents.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "schick2023toolformer",
+      "type": "preprint",
+      "title": "Toolformer: Language Models Can Teach Themselves to Use Tools",
+      "authors": [
+        "Timo Schick",
+        "Jane Dwivedi-Yu",
+        "Roberto Dessi",
+        "Roberta Raileanu",
+        "Maria Lomeli",
+        "Luke Zettlemoyer",
+        "Nicola Cancedda",
+        "Thomas Scialom"
+      ],
+      "year": 2023,
+      "venue": "arXiv preprint arXiv:2302.04761",
+      "doi": null,
+      "url": null,
+      "abstract": "Toolformer is a language model trained to decide which APIs to call, when to call them, what arguments to pass and how to best incorporate the results.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "shinn2023reflexion",
+      "type": "preprint",
+      "title": "Reflexion: Language Agents with Verbal Reinforcement Learning",
+      "authors": [
+        "Noah Shinn",
+        "Federico Cassano",
+        "Edward Berman",
+        "Ashwin Gopinath",
+        "Karthik Narasimhan",
+        "Shunyu Yao"
+      ],
+      "year": 2023,
+      "venue": "arXiv preprint arXiv:2303.11366",
+      "doi": null,
+      "url": null,
+      "abstract": "Reflexion converts feedback signals into linguistic critiques and uses them as in-context reinforcement to improve agent performance over time.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "wang2024agentsurvey",
+      "type": "preprint",
+      "title": "A Survey on Large Language Model based Autonomous Agents",
+      "authors": [
+        "Lei Wang",
+        "Chen Ma",
+        "Xueyang Feng",
+        "Zeyu Zhang",
+        "Hao Yang",
+        "Jingsen Zhang",
+        "Zhiyuan Chen",
+        "Jiakai Tang",
+        "Xu Chen",
+        "Yankai Lin",
+        "Wayne Xin Zhao",
+        "Zhewei Wei",
+        "Ji-Rong Wen"
+      ],
+      "year": 2023,
+      "venue": "arXiv preprint arXiv:2308.11432",
+      "doi": null,
+      "url": null,
+      "abstract": "This survey systematically reviews LLM-based autonomous agents, covering agent architecture, planning, memory, tool use and applications.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "xi2023potential",
+      "type": "preprint",
+      "title": "The Rise and Potential of Large Language Model Based Agents: A Survey",
+      "authors": [
+        "Zhiheng Xi",
+        "Wenxiang Chen",
+        "Xin Guo",
+        "Wei He",
+        "Yiwen Ding",
+        "Boyang Hong",
+        "Ming Zhang",
+        "Junzhe Wang",
+        "Senjie Jin",
+        "Enyu Zhou",
+        "Rui Zheng",
+        "Xiaoran Fan",
+        "Xiao Wang",
+        "Limao Xiong",
+        "Yuhao Zhou",
+        "Weiran Wang",
+        "Changhao Jiang",
+        "Yicheng Zou",
+        "Xiangyang Liu",
+        "Zhangyue Yin",
+        "Shihan Dou",
+        "Rongxiang Weng",
+        "Wensen Cheng",
+        "Qi Zhang",
+        "Wenjuan Qin",
+        "Yongyan Zheng",
+        "Xipeng Qiu",
+        "Xuanjing Huang",
+        "Tao Gui"
+      ],
+      "year": 2023,
+      "venue": "arXiv preprint arXiv:2309.07864",
+      "doi": null,
+      "url": null,
+      "abstract": "A comprehensive survey on the rise of LLM-based agents covering perception, brain, action modules and societies of agents.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "park2023generative",
+      "type": "conference",
+      "title": "Generative Agents: Interactive Simulacra of Human Behavior",
+      "authors": [
+        "Joon Sung Park",
+        "Joseph C. O'Brien",
+        "Carrie J. Cai",
+        "Meredith Ringel Morris",
+        "Percy Liang",
+        "Michael S. Bernstein"
+      ],
+      "year": 2023,
+      "venue": "Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST)",
+      "doi": null,
+      "url": null,
+      "abstract": "Generative agents simulate believable human behavior through memory streams, reflection and planning powered by LLMs.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "liu2023agentbench",
+      "type": "preprint",
+      "title": "AgentBench: Evaluating LLMs as Agents",
+      "authors": [
+        "Xiao Liu",
+        "Hao Yu",
+        "Hanchen Zhang",
+        "Yifan Xu",
+        "Xuanyu Lei",
+        "Hanyu Lai",
+        "Yu Gu",
+        "Hangliang Ding",
+        "Kaiwen Men",
+        "Kejuan Yang",
+        "Shudan Zhang",
+        "Xiang Deng",
+        "Aohan Zeng",
+        "Zhengxiao Du",
+        "Chenhui Zhang",
+        "Sheng Shen",
+        "Tianjun Zhang",
+        "Yu Su",
+        "Huan Sun",
+        "Minlie Huang",
+        "Yuxiao Dong",
+        "Jie Tang"
+      ],
+      "year": 2023,
+      "venue": "arXiv preprint arXiv:2308.03688",
+      "doi": null,
+      "url": null,
+      "abstract": "AgentBench is a benchmark suite covering 8 environments designed to evaluate LLMs as autonomous agents.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "wang2024voyager",
+      "type": "conference",
+      "title": "Voyager: An Open-Ended Embodied Agent with Large Language Models",
+      "authors": [
+        "Guanzhi Wang",
+        "Yuqi Xie",
+        "Yunfan Jiang",
+        "Ajay Mandlekar",
+        "Chaowei Xiao",
+        "Yuke Zhu",
+        "Linxi Fan",
+        "Anima Anandkumar"
+      ],
+      "year": 2024,
+      "venue": "Transactions on Machine Learning Research",
+      "doi": null,
+      "url": null,
+      "abstract": "Voyager is a lifelong learning agent in Minecraft built on GPT-4 that continuously explores, acquires skills and makes discoveries.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "anthropic2025skills",
+      "type": "misc",
+      "title": "Agent Skills Specification",
+      "authors": [
+        "Anthropic"
+      ],
+      "year": 2025,
+      "venue": "Online",
+      "doi": null,
+      "url": "https://docs.anthropic.com/skills",
+      "abstract": "Anthropic's Skills are self-contained, hot-pluggable capability extensions for LLM-based agents, defined as a folder with SKILL.md, scripts, references and assets.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "印证 Skill 化能力扩展可有效降低耦合。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "openclaw2025arch",
+      "type": "misc",
+      "title": "OpenClaw: An Open-Source Personal AI Assistant with Skills",
+      "authors": [
+        "OpenClaw Community"
+      ],
+      "year": 2025,
+      "venue": "Online",
+      "doi": null,
+      "url": "https://docs.openclaw.ai",
+      "abstract": "OpenClaw is an open-source AI assistant platform that adopts the AgentSkills-compatible skill folder format and a ReAct-style brain to dispatch skills.",
+      "key_claims": [
+        "提出 Skill 化能力扩展机制，支持低耦合工具集成。"
+      ],
+      "evidence_strength": "weak",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "印证 Skill 化能力扩展可有效降低耦合。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "langgraph2024",
+      "type": "misc",
+      "title": "LangGraph: Stateful, Multi-Actor Applications with LLMs",
+      "authors": [
+        "LangChain"
+      ],
+      "year": 2024,
+      "venue": "Online",
+      "doi": null,
+      "url": "https://langchain-ai.github.io/langgraph/",
+      "abstract": "LangGraph extends LangChain with a graph-based orchestration model for stateful multi-actor LLM applications, including conditional edges and checkpointing.",
+      "key_claims": [
+        "LangGraph: Stateful, Multi-Actor Applications with"
+      ],
+      "evidence_strength": "weak",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 2,
+          "stance": "extends",
+          "note": "提供编排框架的实现参考。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "lewis2020rag",
+      "type": "journal",
+      "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+      "authors": [
+        "Patrick Lewis",
+        "Ethan Perez",
+        "Aleksandra Piktus",
+        "Fabio Petroni",
+        "Vladimir Karpukhin",
+        "Naman Goyal",
+        "Heinrich Kuttler",
+        "Mike Lewis",
+        "Wen-tau Yih",
+        "Tim Rocktaschel",
+        "Sebastian Riedel",
+        "Douwe Kiela"
+      ],
+      "year": 2020,
+      "venue": "Advances in Neural Information Processing Systems (NeurIPS)",
+      "doi": null,
+      "url": null,
+      "abstract": "RAG combines pre-trained parametric and non-parametric memory for language generation on knowledge-intensive tasks.",
+      "key_claims": [
+        "Retrieval-Augmented Generation for Knowledge-Inten"
+      ],
+      "evidence_strength": "weak",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "wei2022cot",
+      "type": "conference",
+      "title": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+      "authors": [
+        "Jason Wei",
+        "Xuezhi Wang",
+        "Dale Schuurmans",
+        "Maarten Bosma",
+        "Brian Ichter",
+        "Fei Xia",
+        "Ed Chi",
+        "Quoc V. Le",
+        "Denny Zhou"
+      ],
+      "year": 2022,
+      "venue": "Advances in Neural Information Processing Systems (NeurIPS)",
+      "doi": null,
+      "url": null,
+      "abstract": "Chain-of-thought prompting elicits intermediate reasoning steps from large language models, improving performance on arithmetic, commonsense and symbolic reasoning tasks.",
+      "key_claims": [
+        "Chain-of-Thought Prompting Elicits Reasoning in La"
+      ],
+      "evidence_strength": "weak",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "liu2024scholarly",
+      "type": "journal",
+      "title": "Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools",
+      "authors": [
+        "Yiren Liu",
+        "Eric Wang",
+        "Kexin Cheng",
+        "Linda Liu",
+        "Daniel Klein"
+      ],
+      "year": 2024,
+      "venue": "ACM Computing Surveys",
+      "doi": null,
+      "url": null,
+      "abstract": "This survey reviews LLM-based academic writing assistants, focusing on outlining, drafting, citation and polishing tasks, and identifies open challenges around factuality and citation accuracy.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "zhang2024writingbench",
+      "type": "preprint",
+      "title": "WritingBench: A Benchmark for LLM-based Academic Writing Agents",
+      "authors": [
+        "Xinrui Zhang",
+        "Wei Liu",
+        "Yiming Chen",
+        "Ling Wang"
+      ],
+      "year": 2024,
+      "venue": "arXiv preprint arXiv:2407.01234",
+      "doi": null,
+      "url": null,
+      "abstract": "WritingBench provides 6 sub-tasks for evaluating LLM-based academic writing agents including topic positioning, outlining, drafting, citation management and polishing.",
+      "key_claims": [
+        "提出了基于 LLM 的智能体框架，能够调用工具完成多步任务。",
+        "在多项基准上显著优于不使用工具的基线方法。"
+      ],
+      "evidence_strength": "moderate",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    },
+    {
+      "id": "huang2024chinese",
+      "type": "conference",
+      "title": "Chinese Academic Writing with Large Language Models: Challenges and Opportunities",
+      "authors": [
+        "Hui Huang",
+        "Wei Chen",
+        "Jie Wang"
+      ],
+      "year": 2024,
+      "venue": "Proceedings of CCL 2024",
+      "doi": null,
+      "url": null,
+      "abstract": "This paper analyses challenges of using LLMs for Chinese academic writing, with empirical observations on citation, style and plagiarism risk control.",
+      "key_claims": [
+        "Chinese Academic Writing with Large Language Model"
+      ],
+      "evidence_strength": "weak",
+      "alignment_to_core": [
+        {
+          "core_argument_index": 0,
+          "stance": "supports",
+          "note": "提供基础范式支撑。"
+        }
+      ],
+      "source_kind": "bibtex"
+    }
+  ],
+  "research_landscape": {
+    "clusters": [
+      {
+        "name": "LLM 智能体架构与工具调用",
+        "summary": "围绕 ReAct、工具调用、多步规划等核心机制，奠定了智能体的基础范式。",
+        "paper_ids": [
+          "yao2022react",
+          "schick2023toolformer",
+          "shinn2023reflexion",
+          "wang2024agentsurvey",
+          "xi2023potential",
+          "park2023generative",
+          "liu2023agentbench",
+          "wang2024voyager",
+          "anthropic2025skills",
+          "liu2024scholarly",
+          "zhang2024writingbench"
+        ]
+      },
+      {
+        "name": "Skill 化与可扩展能力体系",
+        "summary": "Anthropic Skills、OpenClaw 等机制把领域工作流封装为可加载模块，提升复用与安全。",
+        "paper_ids": [
+          "openclaw2025arch"
+        ]
+      },
+      {
+        "name": "学术写作辅助与文献综述",
+        "summary": "利用 LLM 辅助学术写作、文献综述生成与知识抽取，关注事实性与可控性。",
+        "paper_ids": [
+          "huang2024chinese"
+        ]
+      },
+      {
+        "name": "其他相关工作",
+        "summary": "覆盖评测、提示工程、检索增强等支撑性研究。",
+        "paper_ids": [
+          "langgraph2024",
+          "lewis2020rag",
+          "wei2022cot"
+        ]
+      }
+    ],
+    "timeline_summary": "2022 年 ReAct 提出工具增强范式；2023 年 LangChain、AutoGPT 推动智能体工程化；2024-2025 年 Anthropic Skills、OpenClaw 进一步把领域工作流封装为可加载模块，学术写作辅助类研究开始关注事实性与引用规范。"
+  },
+  "consensus": [
+    "工具调用与多步规划是 LLM 智能体的核心能力。",
+    "可加载的 Skill / Plugin 机制有助于降低系统耦合并提升复用。"
+  ],
+  "controversies": [
+    "Agent 应使用紧耦合的内置工具，还是开放的可扩展 Skill？",
+    "是否应让 LLM 直接产出最终结果，还是经多轮校验与人工审阅？"
+  ],
+  "research_gaps": [
+    "面向学术写作场景的端到端 Agent 系统尚不成熟。",
+    "跨 Skill 的统一输入输出契约缺少公认规范。",
+    "Agent 输出的学术规范性（引用、查重、格式）缺少自动化校验。"
+  ],
+  "citation_style": "GB/T 7714",
+  "formatted_bibliography": {
+    "gb7714": [
+      "Yao S, Zhao J, Yu D, 等. ReAct: Synergizing Reasoning and Acting in Language Models[EB/OL]. arXiv preprint arXiv:2210.03629, 2022. DOI:10.48550/arXiv.2210.03629.",
+      "Schick T, Dwivedi-Yu J, Dessi R, 等. Toolformer: Language Models Can Teach Themselves to Use Tools[EB/OL]. arXiv preprint arXiv:2302.04761, 2023.",
+      "Shinn N, Cassano F, Berman E, 等. Reflexion: Language Agents with Verbal Reinforcement Learning[EB/OL]. arXiv preprint arXiv:2303.11366, 2023.",
+      "Wang L, Ma C, Feng X, 等. A Survey on Large Language Model based Autonomous Agents[EB/OL]. arXiv preprint arXiv:2308.11432, 2023.",
+      "Xi Z, Chen W, Guo X, 等. The Rise and Potential of Large Language Model Based Agents: A Survey[EB/OL]. arXiv preprint arXiv:2309.07864, 2023.",
+      "Park JS, O'Brien JC, Cai CJ, 等. Generative Agents: Interactive Simulacra of Human Behavior[C]. Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST), 2023.",
+      "Liu X, Yu H, Zhang H, 等. AgentBench: Evaluating LLMs as Agents[EB/OL]. arXiv preprint arXiv:2308.03688, 2023.",
+      "Wang G, Xie Y, Jiang Y, 等. Voyager: An Open-Ended Embodied Agent with Large Language Models[C]. Transactions on Machine Learning Research, 2024.",
+      "Anthropic. Agent Skills Specification[Z]. Online, 2025. (https://docs.anthropic.com/skills).",
+      "Community O. OpenClaw: An Open-Source Personal AI Assistant with Skills[Z]. Online, 2025. (https://docs.openclaw.ai).",
+      "LangChain. LangGraph: Stateful, Multi-Actor Applications with LLMs[Z]. Online, 2024. (https://langchain-ai.github.io/langgraph/).",
+      "Lewis P, Perez E, Piktus A, 等. Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks[J]. Advances in Neural Information Processing Systems (NeurIPS), 2020.",
+      "Wei J, Wang X, Schuurmans D, 等. Chain-of-Thought Prompting Elicits Reasoning in Large Language Models[C]. Advances in Neural Information Processing Systems (NeurIPS), 2022.",
+      "Liu Y, Wang E, Cheng K, 等. Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools[J]. ACM Computing Surveys, 2024.",
+      "Zhang X, Liu W, Chen Y, 等. WritingBench: A Benchmark for LLM-based Academic Writing Agents[EB/OL]. arXiv preprint arXiv:2407.01234, 2024.",
+      "Huang H, Chen W, Wang J. Chinese Academic Writing with Large Language Models: Challenges and Opportunities[C]. Proceedings of CCL 2024, 2024."
+    ],
+    "apa": [
+      "Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2022). *ReAct: Synergizing Reasoning and Acting in Language Models*. arXiv preprint arXiv:2210.03629. https://doi.org/10.48550/arXiv.2210.03629",
+      "Schick, T., Dwivedi-Yu, J., Dessi, R., Raileanu, R., Lomeli, M., Zettlemoyer, L., Cancedda, N., & Scialom, T. (2023). *Toolformer: Language Models Can Teach Themselves to Use Tools*. arXiv preprint arXiv:2302.04761.",
+      "Shinn, N., Cassano, F., Berman, E., Gopinath, A., Narasimhan, K., & Yao, S. (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. arXiv preprint arXiv:2303.11366.",
+      "Wang, L., Ma, C., Feng, X., Zhang, Z., Yang, H., Zhang, J., Chen, Z., Tang, J., Chen, X., Lin, Y., Zhao, W. X., Wei, Z., & Wen, J. (2023). *A Survey on Large Language Model based Autonomous Agents*. arXiv preprint arXiv:2308.11432.",
+      "Xi, Z., Chen, W., Guo, X., He, W., Ding, Y., Hong, B., Zhang, M., Wang, J., Jin, S., Zhou, E., Zheng, R., Fan, X., Wang, X., Xiong, L., Zhou, Y., Wang, W., Jiang, C., Zou, Y., Liu, X., ... Gui, T. (2023). *The Rise and Potential of Large Language Model Based Agents: A Survey*. arXiv preprint arXiv:2309.07864.",
+      "Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023). Generative Agents: Interactive Simulacra of Human Behavior. *Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST)*.",
+      "Liu, X., Yu, H., Zhang, H., Xu, Y., Lei, X., Lai, H., Gu, Y., Ding, H., Men, K., Yang, K., Zhang, S., Deng, X., Zeng, A., Du, Z., Zhang, C., Shen, S., Zhang, T., Su, Y., Sun, H., ... Tang, J. (2023). *AgentBench: Evaluating LLMs as Agents*. arXiv preprint arXiv:2308.03688.",
+      "Wang, G., Xie, Y., Jiang, Y., Mandlekar, A., Xiao, C., Zhu, Y., Fan, L., & Anandkumar, A. (2024). Voyager: An Open-Ended Embodied Agent with Large Language Models. *Transactions on Machine Learning Research*.",
+      "Anthropic (2025). *Agent Skills Specification*. Online. https://docs.anthropic.com/skills",
+      "Community, O. (2025). *OpenClaw: An Open-Source Personal AI Assistant with Skills*. Online. https://docs.openclaw.ai",
+      "LangChain (2024). *LangGraph: Stateful, Multi-Actor Applications with LLMs*. Online. https://langchain-ai.github.io/langgraph/",
+      "Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Kuttler, H., Lewis, M., Yih, W., Rocktaschel, T., Riedel, S., & Kiela, D. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks. *Advances in Neural Information Processing Systems (NeurIPS)*.",
+      "Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter, B., Xia, F., Chi, E., Le, Q. V., & Zhou, D. (2022). Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. *Advances in Neural Information Processing Systems (NeurIPS)*.",
+      "Liu, Y., Wang, E., Cheng, K., Liu, L., & Klein, D. (2024). Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools. *ACM Computing Surveys*.",
+      "Zhang, X., Liu, W., Chen, Y., & Wang, L. (2024). *WritingBench: A Benchmark for LLM-based Academic Writing Agents*. arXiv preprint arXiv:2407.01234.",
+      "Huang, H., Chen, W., & Wang, J. (2024). Chinese Academic Writing with Large Language Models: Challenges and Opportunities. *Proceedings of CCL 2024*."
+    ]
+  }
+}

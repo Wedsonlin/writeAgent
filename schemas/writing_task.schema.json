@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://writeagent.local/schemas/writing_task.schema.json",
+  "title": "WritingTask",
+  "description": "Skill 1（写作需求分析与选题定位）的输出。结构化论文写作任务书。",
+  "type": "object",
+  "required": [
+    "topic", "paper_type", "language",
+    "target_journal", "word_limit",
+    "core_arguments", "chapter_framework",
+    "missing_info"
+  ],
+  "properties": {
+    "topic": {
+      "type": "string",
+      "description": "论文核心主题（一句话）"
+    },
+    "paper_type": {
+      "type": "string",
+      "enum": ["survey", "empirical", "theoretical", "system", "case_study", "position"],
+      "description": "论文类型：综述/实证/理论/系统/案例研究/立场观点"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["zh", "en", "bilingual"]
+    },
+    "target_journal": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "description": "期刊名称或'未指定'" },
+        "level": {
+          "type": "string",
+          "enum": ["CCF-A", "CCF-B", "CCF-C", "SCI", "EI", "中文核心", "未指定", "其他"]
+        },
+        "style_profile": {
+          "type": "object",
+          "description": "匹配到的格式与风格画像（来自 references/journal-styles.md）",
+          "properties": {
+            "citation_style": { "type": "string", "enum": ["GB/T 7714", "APA", "IEEE", "ACM", "Chicago"] },
+            "tone": { "type": "string", "enum": ["formal-zh", "formal-en", "narrative"] },
+            "structure_hint": { "type": "string" }
+          }
+        }
+      }
+    },
+    "word_limit": {
+      "type": "object",
+      "required": ["total"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 1000 },
+        "by_chapter": {
+          "type": "object",
+          "description": "可选：按章节预算字数",
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "core_arguments": {
+      "type": "array",
+      "description": "论文要论证的核心论点（每条一句话）",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "innovation_points": {
+      "type": "array",
+      "description": "声明的创新点 / 贡献",
+      "items": { "type": "string" }
+    },
+    "research_scope": {
+      "type": "object",
+      "properties": {
+        "domain": { "type": "string", "description": "研究领域，如 LLM Agent、学术写作辅助" },
+        "subtopics": { "type": "array", "items": { "type": "string" } },
+        "boundary": { "type": "string", "description": "明确不在讨论范围的内容" }
+      }
+    },
+    "chapter_framework": {
+      "type": "array",
+      "description": "顶层章节框架（一级 / 可选二级）",
+      "items": {
+        "type": "object",
+        "required": ["chapter_id", "title", "key_points"],
+        "properties": {
+          "chapter_id": { "type": "string", "description": "如 1 / 2.1 / 3" },
+          "title": { "type": "string" },
+          "key_points": { "type": "array", "items": { "type": "string" } },
+          "word_budget": { "type": "integer" },
+          "depends_on": { "type": "array", "items": { "type": "string" }, "description": "前置章节 id" }
+        }
+      }
+    },
+    "references_seed": {
+      "type": "array",
+      "description": "用户提供的初始参考文献清单（透传给 Skill 2）",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["bibtex", "pdf", "text", "url"] },
+          "path": { "type": "string", "description": "本地文件路径或 URL" },
+          "raw": { "type": "string", "description": "可选：内联文本" }
+        }
+      }
+    },
+    "missing_info": {
+      "type": "array",
+      "description": "Skill 1 自动识别的关键缺失字段。非空时，编排层应触发 human_clarify 节点。",
+      "items": {
+        "type": "object",
+        "required": ["field", "question", "criticality"],
+        "properties": {
+          "field": { "type": "string", "description": "缺失字段路径，如 target_journal.name" },
+          "question": { "type": "string", "description": "向用户提问的话术" },
+          "criticality": { "type": "string", "enum": ["blocker", "important", "nice-to-have"] },
+          "suggested_default": { "type": "string" }
+        }
+      }
+    }
+  }
+}

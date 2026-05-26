@@ -1,0 +1,13 @@
+# Core dependencies — used by Skills (`skills/*/scripts/*.py`) and the OpenClaw runtime.
+# Keep this list minimal; LangGraph/LangChain are intentionally NOT here so that Skills
+# remain a clean, OpenClaw-compatible subprocess layer.
+
+openai>=1.40.0
+pydantic>=2.5.0
+jsonschema>=4.21.0
+pyyaml>=6.0
+jinja2>=3.1.2
+rich>=13.7.0
+bibtexparser>=1.4.1
+pypdf>=4.0.0
+python-dotenv>=1.0.0

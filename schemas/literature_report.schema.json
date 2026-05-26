@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://writeagent.local/schemas/literature_report.schema.json",
+  "title": "LiteratureReport",
+  "description": "Skill 2（文献梳理与引用整合）的输出。",
+  "type": "object",
+  "required": [
+    "keywords", "papers",
+    "research_landscape", "consensus", "controversies", "research_gaps",
+    "citation_style", "formatted_bibliography"
+  ],
+  "properties": {
+    "keywords": {
+      "type": "array",
+      "description": "用于检索与聚类的研究关键词",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "papers": {
+      "type": "array",
+      "description": "解析后的文献元数据 + LLM 提炼信息",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "year", "key_claims"],
+        "properties": {
+          "id": { "type": "string", "description": "稳定 id，如 BibTeX entry key 或自生成" },
+          "type": { "type": "string", "enum": ["journal", "conference", "preprint", "book", "thesis", "report", "misc"] },
+          "title": { "type": "string" },
+          "authors": { "type": "array", "items": { "type": "string" } },
+          "year": { "type": "integer" },
+          "venue": { "type": "string", "description": "期刊 / 会议 / 出版方" },
+          "doi": { "type": "string" },
+          "url": { "type": "string" },
+          "abstract": { "type": "string" },
+          "key_claims": {
+            "type": "array",
+            "description": "LLM 抽取的核心观点（每条一句话）",
+            "items": { "type": "string" }
+          },
+          "evidence_strength": {
+            "type": "string",
+            "enum": ["strong", "moderate", "weak", "anecdotal"],
+            "description": "证据强度（理论/经验/案例/轶事）"
+          },
+          "alignment_to_core": {
+            "type": "array",
+            "description": "与 writing_task.core_arguments 的对齐关系",
+            "items": {
+              "type": "object",
+              "required": ["core_argument_index", "stance"],
+              "properties": {
+                "core_argument_index": { "type": "integer", "minimum": 0 },
+                "stance": { "type": "string", "enum": ["supports", "extends", "challenges", "neutral"] },
+                "note": { "type": "string" }
+              }
+            }
+          },
+          "source_kind": { "type": "string", "enum": ["bibtex", "pdf", "text", "url"] }
+        }
+      }
+    },
+    "research_landscape": {
+      "type": "object",
+      "required": ["clusters"],
+      "properties": {
+        "clusters": {
+          "type": "array",
+          "description": "按主题聚类的研究脉络",
+          "items": {
+            "type": "object",
+            "required": ["name", "paper_ids"],
+            "properties": {
+              "name": { "type": "string", "description": "聚类主题名" },
+              "summary": { "type": "string", "description": "该聚类的一段综述" },
+              "paper_ids": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "timeline_summary": {
+          "type": "string",
+          "description": "按时间线的领域演进概述"
+        }
+      }
+    },
+    "consensus": {
+      "type": "array",
+      "description": "已成共识的观点",
+      "items": { "type": "string" }
+    },
+    "controversies": {
+      "type": "array",
+      "description": "学界存在争议的议题",
+      "items": { "type": "string" }
+    },
+    "research_gaps": {
+      "type": "array",
+      "description": "尚未充分研究的方向（为创新点提供支撑）",
+      "items": { "type": "string" }
+    },
+    "citation_style": {
+      "type": "string",
+      "enum": ["GB/T 7714", "APA", "IEEE", "ACM", "Chicago"]
+    },
+    "formatted_bibliography": {
+      "type": "object",
+      "description": "至少同时生成 GB/T 7714 与 APA 两种格式",
+      "required": ["gb7714", "apa"],
+      "properties": {
+        "gb7714": {
+          "type": "array",
+          "items": { "type": "string", "description": "一行一条规范引用" }
+        },
+        "apa": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

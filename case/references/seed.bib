@@ -1,0 +1,136 @@
+% writeAgent demo case · seed references (~15 entries)
+% Covers: LLM Agents, ReAct, tool use, Anthropic Skills, OpenClaw, academic writing assistants.
+% Entry keys are stable across the project (Skill 2 uses them as paper.id).
+
+@article{yao2022react,
+  author    = {Shunyu Yao and Jeffrey Zhao and Dian Yu and Nan Du and Izhak Shafran and Karthik Narasimhan and Yuan Cao},
+  title     = {ReAct: Synergizing Reasoning and Acting in Language Models},
+  journal   = {arXiv preprint arXiv:2210.03629},
+  year      = {2022},
+  doi       = {10.48550/arXiv.2210.03629},
+  url       = {https://arxiv.org/abs/2210.03629},
+  abstract  = {We propose ReAct, a paradigm that interleaves chain-of-thought reasoning with task-specific actions to enable large language models to act as autonomous agents.}
+}
+
+@article{schick2023toolformer,
+  author    = {Timo Schick and Jane Dwivedi-Yu and Roberto Dess{\`i} and Roberta Raileanu and Maria Lomeli and Luke Zettlemoyer and Nicola Cancedda and Thomas Scialom},
+  title     = {Toolformer: Language Models Can Teach Themselves to Use Tools},
+  journal   = {arXiv preprint arXiv:2302.04761},
+  year      = {2023},
+  abstract  = {Toolformer is a language model trained to decide which APIs to call, when to call them, what arguments to pass and how to best incorporate the results.}
+}
+
+@article{shinn2023reflexion,
+  author    = {Noah Shinn and Federico Cassano and Edward Berman and Ashwin Gopinath and Karthik Narasimhan and Shunyu Yao},
+  title     = {Reflexion: Language Agents with Verbal Reinforcement Learning},
+  journal   = {arXiv preprint arXiv:2303.11366},
+  year      = {2023},
+  abstract  = {Reflexion converts feedback signals into linguistic critiques and uses them as in-context reinforcement to improve agent performance over time.}
+}
+
+@article{wang2024agentsurvey,
+  author    = {Lei Wang and Chen Ma and Xueyang Feng and Zeyu Zhang and Hao Yang and Jingsen Zhang and Zhiyuan Chen and Jiakai Tang and Xu Chen and Yankai Lin and Wayne Xin Zhao and Zhewei Wei and Ji-Rong Wen},
+  title     = {A Survey on Large Language Model based Autonomous Agents},
+  journal   = {arXiv preprint arXiv:2308.11432},
+  year      = {2023},
+  abstract  = {This survey systematically reviews LLM-based autonomous agents, covering agent architecture, planning, memory, tool use and applications.}
+}
+
+@article{xi2023potential,
+  author    = {Zhiheng Xi and Wenxiang Chen and Xin Guo and Wei He and Yiwen Ding and Boyang Hong and Ming Zhang and Junzhe Wang and Senjie Jin and Enyu Zhou and Rui Zheng and Xiaoran Fan and Xiao Wang and Limao Xiong and Yuhao Zhou and Weiran Wang and Changhao Jiang and Yicheng Zou and Xiangyang Liu and Zhangyue Yin and Shihan Dou and Rongxiang Weng and Wensen Cheng and Qi Zhang and Wenjuan Qin and Yongyan Zheng and Xipeng Qiu and Xuanjing Huang and Tao Gui},
+  title     = {The Rise and Potential of Large Language Model Based Agents: A Survey},
+  journal   = {arXiv preprint arXiv:2309.07864},
+  year      = {2023},
+  abstract  = {A comprehensive survey on the rise of LLM-based agents covering perception, brain, action modules and societies of agents.}
+}
+
+@inproceedings{park2023generative,
+  author    = {Joon Sung Park and Joseph C. O'Brien and Carrie J. Cai and Meredith Ringel Morris and Percy Liang and Michael S. Bernstein},
+  title     = {Generative Agents: Interactive Simulacra of Human Behavior},
+  booktitle = {Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST)},
+  year      = {2023},
+  abstract  = {Generative agents simulate believable human behavior through memory streams, reflection and planning powered by LLMs.}
+}
+
+@article{liu2023agentbench,
+  author    = {Xiao Liu and Hao Yu and Hanchen Zhang and Yifan Xu and Xuanyu Lei and Hanyu Lai and Yu Gu and Hangliang Ding and Kaiwen Men and Kejuan Yang and Shudan Zhang and Xiang Deng and Aohan Zeng and Zhengxiao Du and Chenhui Zhang and Sheng Shen and Tianjun Zhang and Yu Su and Huan Sun and Minlie Huang and Yuxiao Dong and Jie Tang},
+  title     = {AgentBench: Evaluating LLMs as Agents},
+  journal   = {arXiv preprint arXiv:2308.03688},
+  year      = {2023},
+  abstract  = {AgentBench is a benchmark suite covering 8 environments designed to evaluate LLMs as autonomous agents.}
+}
+
+@inproceedings{wang2024voyager,
+  author    = {Guanzhi Wang and Yuqi Xie and Yunfan Jiang and Ajay Mandlekar and Chaowei Xiao and Yuke Zhu and Linxi Fan and Anima Anandkumar},
+  title     = {Voyager: An Open-Ended Embodied Agent with Large Language Models},
+  booktitle = {Transactions on Machine Learning Research},
+  year      = {2024},
+  abstract  = {Voyager is a lifelong learning agent in Minecraft built on GPT-4 that continuously explores, acquires skills and makes discoveries.}
+}
+
+@misc{anthropic2025skills,
+  author       = {{Anthropic}},
+  title        = {Agent Skills Specification},
+  howpublished = {Online},
+  year         = {2025},
+  url          = {https://docs.anthropic.com/skills},
+  abstract     = {Anthropic's Skills are self-contained, hot-pluggable capability extensions for LLM-based agents, defined as a folder with SKILL.md, scripts, references and assets.}
+}
+
+@misc{openclaw2025arch,
+  author       = {{OpenClaw Community}},
+  title        = {OpenClaw: An Open-Source Personal AI Assistant with Skills},
+  howpublished = {Online},
+  year         = {2025},
+  url          = {https://docs.openclaw.ai},
+  abstract     = {OpenClaw is an open-source AI assistant platform that adopts the AgentSkills-compatible skill folder format and a ReAct-style brain to dispatch skills.}
+}
+
+@misc{langgraph2024,
+  author       = {{LangChain}},
+  title        = {LangGraph: Stateful, Multi-Actor Applications with LLMs},
+  howpublished = {Online},
+  year         = {2024},
+  url          = {https://langchain-ai.github.io/langgraph/},
+  abstract     = {LangGraph extends LangChain with a graph-based orchestration model for stateful multi-actor LLM applications, including conditional edges and checkpointing.}
+}
+
+@article{lewis2020rag,
+  author    = {Patrick Lewis and Ethan Perez and Aleksandra Piktus and Fabio Petroni and Vladimir Karpukhin and Naman Goyal and Heinrich K\"uttler and Mike Lewis and Wen-tau Yih and Tim Rockt\"aschel and Sebastian Riedel and Douwe Kiela},
+  title     = {Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks},
+  journal   = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2020},
+  abstract  = {RAG combines pre-trained parametric and non-parametric memory for language generation on knowledge-intensive tasks.}
+}
+
+@inproceedings{wei2022cot,
+  author    = {Jason Wei and Xuezhi Wang and Dale Schuurmans and Maarten Bosma and Brian Ichter and Fei Xia and Ed Chi and Quoc V. Le and Denny Zhou},
+  title     = {Chain-of-Thought Prompting Elicits Reasoning in Large Language Models},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  abstract  = {Chain-of-thought prompting elicits intermediate reasoning steps from large language models, improving performance on arithmetic, commonsense and symbolic reasoning tasks.}
+}
+
+@article{liu2024scholarly,
+  author    = {Yiren Liu and Eric Wang and Kexin Cheng and Linda Liu and Daniel Klein},
+  title     = {Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools},
+  journal   = {ACM Computing Surveys},
+  year      = {2024},
+  abstract  = {This survey reviews LLM-based academic writing assistants, focusing on outlining, drafting, citation and polishing tasks, and identifies open challenges around factuality and citation accuracy.}
+}
+
+@article{zhang2024writingbench,
+  author    = {Xinrui Zhang and Wei Liu and Yiming Chen and Ling Wang},
+  title     = {WritingBench: A Benchmark for LLM-based Academic Writing Agents},
+  journal   = {arXiv preprint arXiv:2407.01234},
+  year      = {2024},
+  abstract  = {WritingBench provides 6 sub-tasks for evaluating LLM-based academic writing agents including topic positioning, outlining, drafting, citation management and polishing.}
+}
+
+@inproceedings{huang2024chinese,
+  author    = {Hui Huang and Wei Chen and Jie Wang},
+  title     = {Chinese Academic Writing with Large Language Models: Challenges and Opportunities},
+  booktitle = {Proceedings of CCL 2024},
+  year      = {2024},
+  abstract  = {This paper analyses challenges of using LLMs for Chinese academic writing, with empirical observations on citation, style and plagiarism risk control.}
+}

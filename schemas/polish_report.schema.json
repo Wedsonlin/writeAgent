@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://writeagent.local/schemas/polish_report.schema.json",
+  "title": "PolishReport",
+  "description": "Skill 6（语言润色与查重优化）的输出。由李泓铮负责完整实现，本仓库给出接口契约。",
+  "type": "object",
+  "required": ["polished_draft", "polish_log"],
+  "properties": {
+    "polished_draft": {
+      "type": "object",
+      "description": "润色后的论文（结构与 PaperDraft 一致）",
+      "required": ["sections"],
+      "properties": {
+        "abstract": { "type": "string" },
+        "sections": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "polish_log": {
+      "type": "array",
+      "description": "每条润色记录",
+      "items": {
+        "type": "object",
+        "required": ["location", "change_type", "before", "after"],
+        "properties": {
+          "location": { "type": "string" },
+          "change_type": { "type": "string", "enum": ["grammar", "punctuation", "concise", "rephrase", "logic", "tone"] },
+          "before": { "type": "string" },
+          "after": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "plagiarism_optimization": {
+      "type": "array",
+      "description": "可选：针对查重报告的降重建议",
+      "items": {
+        "type": "object",
+        "required": ["location", "original", "suggestion"],
+        "properties": {
+          "location": { "type": "string" },
+          "original": { "type": "string" },
+          "suggestion": { "type": "string" },
+          "estimated_similarity_drop": { "type": "number" }
+        }
+      }
+    }
+  }
+}

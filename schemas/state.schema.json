@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://writeagent.local/schemas/state.schema.json",
+  "title": "WriteAgentState",
+  "description": "跨 6 个 Skill 共享的工作区状态。LangGraph 模式下作为 StateGraph 的 channel；OpenClaw 模式下落盘为 .writeagent/state.json。",
+  "type": "object",
+  "required": ["case_id", "stage", "history"],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "案例唯一标识，例如 writing-agent-design-2026"
+    },
+    "user_request": {
+      "type": "string",
+      "description": "用户最初的自然语言需求"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "init",
+        "skill1_running", "skill1_done",
+        "awaiting_clarification",
+        "skill2_running", "skill2_done",
+        "skill3_running", "skill3_done",
+        "skill4_running", "skill4_done",
+        "skill5_running", "skill5_done",
+        "skill6_running", "skill6_done",
+        "finished",
+        "failed"
+      ]
+    },
+    "history": {
+      "type": "array",
+      "description": "Skill 调用日志（按时间顺序）",
+      "items": {
+        "type": "object",
+        "required": ["skill", "ts", "status"],
+        "properties": {
+          "skill": { "type": "string" },
+          "ts": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["ok", "error", "skipped"] },
+          "message": { "type": "string" },
+          "duration_ms": { "type": "integer" }
+        }
+      }
+    },
+    "writing_task": {
+      "$ref": "writing_task.schema.json"
+    },
+    "literature_report": {
+      "$ref": "literature_report.schema.json"
+    },
+    "outline": {
+      "$ref": "paper_outline.schema.json"
+    },
+    "draft": {
+      "$ref": "paper_draft.schema.json"
+    },
+    "formatted_draft": {
+      "$ref": "format_report.schema.json"
+    },
+    "polished_draft": {
+      "$ref": "polish_report.schema.json"
+    }
+  }
+}

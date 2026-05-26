@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "writeagent"
+version = "0.1.0"
+description = "论文写作 Agent：基于 LangGraph 编排 + OpenClaw 兼容 Skill 的双轨架构"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "林晓旭 (writeAgent group)" }]
+
+[project.scripts]
+writeagent = "agent.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["agent*"]
+exclude = ["skills*", "case*", "docs*", "schemas*", "tests*", "examples*"]

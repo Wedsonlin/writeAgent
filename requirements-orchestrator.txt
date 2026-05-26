@@ -1,0 +1,10 @@
+# Orchestrator-only dependencies (incremental on top of requirements-core.txt).
+# These are required ONLY for the standalone LangGraph mode (`python -m agent run`).
+# OpenClaw deployments do not need to install these.
+
+-r requirements-core.txt
+
+langgraph>=0.2.30
+langgraph-checkpoint-sqlite>=2.0.0
+langchain-core>=0.3.0
+typer>=0.12.0
