@@ -101,13 +101,6 @@ python -m agent resume
 等斜杠命令触发，或让 OpenClaw 的 ReAct 大脑自动调度。详见
 [docs/02-OpenClaw适配方案.md](docs/02-OpenClaw适配方案.md)。
 
-## 分工
-
-- **林晓旭**：Agent 架构（本仓库 `agent/`）、OpenClaw 适配、Skill 1、Skill 2
-- **张慧晴**：Skill 3（paper-outline）、Skill 4（paper-content-generation）
-- **李泓铮**：Skill 5（academic-formatting）、Skill 6（polish-and-plagiarism）
-
-详细分工见父目录 `论文写作Agent与Skill设计作业分工计划.md`。
 
 ## 协作合约
 
