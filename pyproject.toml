@@ -9,7 +9,7 @@ description = "论文写作 Agent：基于 LangGraph 编排 + OpenClaw 兼容 Sk
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "林晓旭 (writeAgent group)" }]
+authors = [{ name = "writeAgent group" }]
 
 [project.scripts]
 writeagent = "agent.cli:app"

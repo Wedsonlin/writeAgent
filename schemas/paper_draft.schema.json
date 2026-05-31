@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://writeagent.local/schemas/paper_draft.schema.json",
   "title": "PaperDraft",
-  "description": "Skill 4（分章节内容生成）的输出。由张慧晴负责完整实现，本仓库给出接口契约。",
+  "description": "Skill 4（分章节内容生成）的输出。本仓库给出接口契约。",
   "type": "object",
   "required": ["sections", "abstract"],
   "properties": {

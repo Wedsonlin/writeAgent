@@ -4,9 +4,9 @@
 采用 **LangGraph 编排 + OpenClaw 兼容 Skill** 的双轨架构：
 
 - **独立模式** `python -m agent run`：LangGraph `StateGraph` 驱动 6 个 Skill 串联，
-  支持检查点、断点恢复、`missing_info` 回环、失败重试。
+支持检查点、断点恢复、`missing_info` 回环、失败重试。
 - **OpenClaw 模式**：把 `./skills/` 整体作为工作区 Skill 安装；OpenClaw 自带
-  ReAct 大脑依 `SKILL.md` 的 `description` 字段自主调度，**不依赖 LangGraph**。
+ReAct 大脑依 `SKILL.md` 的 `description` 字段自主调度，**不依赖 LangGraph**。
 
 两种模式共享同一份 `./skills/*/scripts/run.py` 业务实现 + 同一份 `state.json`
 中间结果。
@@ -43,10 +43,10 @@ writeAgent/
 ├── skills/                        # OpenClaw 兼容 Skill
 │   ├── writing-requirement-analysis/   # Skill 1（本仓库实现）
 │   ├── literature-review/              # Skill 2（本仓库实现）
-│   ├── paper-outline/                  # Skill 3（接口骨架，移交张慧晴）
-│   ├── paper-content-generation/       # Skill 4（接口骨架，移交张慧晴）
-│   ├── academic-formatting/            # Skill 5（接口骨架，移交李泓铮）
-│   ├── polish-and-plagiarism/          # Skill 6（接口骨架，移交李泓铮）
+│   ├── paper-outline/                  # Skill 3（接口骨架）
+│   ├── paper-content-generation/       # Skill 4（接口骨架）
+│   ├── academic-formatting/            # Skill 5（接口骨架）
+│   ├── polish-and-plagiarism/          # Skill 6（接口骨架）
 │   └── _shared/                        # 各 Skill 共享工具（llm.py、io.py、schemas.py）
 │
 ├── case/                          # 案例素材与阶段产物
@@ -101,9 +101,9 @@ python -m agent resume
 等斜杠命令触发，或让 OpenClaw 的 ReAct 大脑自动调度。详见
 [docs/02-OpenClaw适配方案.md](docs/02-OpenClaw适配方案.md)。
 
-
 ## 协作合约
 
 - 所有 Skill 共享 `./schemas/*.schema.json` 定义的字段
 - 所有 Skill 通过 `python {baseDir}/scripts/run.py --state <path>` 调用，输入输出均落 `state.json`
 - 详见 [docs/03-统一输入输出字段规范.md](docs/03-统一输入输出字段规范.md)
+

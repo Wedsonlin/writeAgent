@@ -9,7 +9,7 @@ metadata: {"openclaw":{"requires":{"bins":["python"],"env":["WRITEAGENT_LLM_API_
 
 # 分章节内容生成 Skill（接口骨架）
 
-> 本 Skill 由组员 **张慧晴** 负责完整实现。本文件作为接口契约。
+> 本文件作为接口契约。
 
 ## 何时使用
 

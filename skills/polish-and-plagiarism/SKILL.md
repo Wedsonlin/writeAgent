@@ -9,7 +9,7 @@ metadata: {"openclaw":{"requires":{"bins":["python"],"env":["WRITEAGENT_LLM_API_
 
 # 语言润色与查重优化 Skill（接口骨架）
 
-> 本 Skill 由组员 **李泓铮** 负责完整实现。本文件作为接口契约。
+> 本文件作为接口契约。
 
 ## 何时使用
 

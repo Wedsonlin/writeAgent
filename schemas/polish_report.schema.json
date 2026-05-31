@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://writeagent.local/schemas/polish_report.schema.json",
   "title": "PolishReport",
-  "description": "Skill 6（语言润色与查重优化）的输出。由李泓铮负责完整实现，本仓库给出接口契约。",
+  "description": "Skill 6（语言润色与查重优化）的输出。本仓库给出接口契约。",
   "type": "object",
   "required": ["polished_draft", "polish_log"],
   "properties": {
