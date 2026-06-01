@@ -47,8 +47,8 @@ class SkillRunner:
         python_executable: str | None = None,
         timeout: float = 600.0,
     ) -> None:
-        self.python = python_executable or sys.executable
-        self.timeout = timeout
+        self.python = python_executable or sys.executable # Python interpreter, default using current's
+        self.timeout = timeout # timeout for skill subprocess
 
     def run(
         self,
@@ -58,7 +58,20 @@ class SkillRunner:
         extra_args: list[str] | None = None,
         env_overrides: dict[str, str] | None = None,
     ) -> SkillResult:
-        """Run a Skill end-to-end and return its result + the post-run state."""
+        """
+        Run a Skill end-to-end and return its result + the post-run state.
+        1. Locate `skills/<skill_name>/scripts/run.py` according to `skill_name`.
+        2. Check whether `run.py` exists.
+        3. Construct the command: python run.py --state state.json
+        4. Set the working directory to the current Skill directory.
+        5. Set `PYTHONPATH` so that the Skill can import shared modules under `skills/_shared`.
+        6. Start a subprocess to execute the Skill.
+        7. Capture `stdout`, `stderr`, and the return code.
+        8. Determine whether the execution succeeded or failed based on `returncode`.
+        9. If the execution succeeds, read the updated state file.
+        10. Encapsulate the execution result into a `SkillResult` and return it.
+        11. If a timeout occurs, return an `error` status.
+        """
         skill_dir = SKILLS_DIR / skill_name
         entry = skill_dir / "scripts" / "run.py"
         if not entry.exists():
@@ -67,7 +80,7 @@ class SkillRunner:
                 f"Make sure skills/{skill_name}/scripts/run.py exists."
             )
 
-        cmd: list[str] = [
+        cmd: list[str] = [ # python skills/<skill_name>/scripts/run.py --state case/state.json
             self.python,
             str(entry),
             "--state",
@@ -77,9 +90,9 @@ class SkillRunner:
             cmd.extend(extra_args)
 
         env = os.environ.copy()
-        # Allow Skills to import sibling helpers via `from _shared.llm import ...`
+        # Allow Skills to import shared modules via `from _shared.llm import ...`
         existing_path = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = (
+        env["PYTHONPATH"] = ( # PYTHONPATH=skills:/some/old/path
             str(SKILLS_DIR) + (os.pathsep + existing_path if existing_path else "")
         )
         if env_overrides:

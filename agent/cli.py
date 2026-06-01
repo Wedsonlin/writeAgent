@@ -2,20 +2,16 @@
 
 Sub-commands
 ------------
-- ``run``     Kick off a fresh pipeline from a user-request file or string.
-- ``resume``  Continue from the latest checkpoint of an existing thread.
+- ``run``     Kick off workflow or local ReAct mode from a request file/string.
+- ``resume``  Continue from the latest workflow checkpoint of an existing thread.
 - ``inspect`` Pretty-print the current ``state.json``.
-
-All three commands route to the *same* compiled graph defined in
-:mod:`agent.graph` and respect the same workspace layout.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import sys
 import uuid
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -30,17 +26,27 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
+from . import llm_client
 from .checkpointer import export_state_json, make_checkpointer
 from .graph import build_graph
+from .react.skill_registry import SkillRegistry
+from .react_runner import ReactRunner
+from .skill_runner import SKILLS_DIR, SkillRunner
 from .state import initial_state
+from .workflow_runner import WorkflowRunner
 
 
-app = typer.Typer(help="writeAgent — LangGraph 编排的论文写作 Agent CLI")
+app = typer.Typer(help="writeAgent — workflow / ReAct 双模式论文写作 Agent CLI")
 console = Console()
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE = REPO_ROOT / ".writeagent"
+
+
+class RunMode(str, Enum):
+    workflow = "workflow"
+    react = "react"
 
 
 def _ensure_workspace(workspace: Optional[Path]) -> Path:
@@ -86,6 +92,16 @@ def run(
     thread_id: Optional[str] = typer.Option(
         None, "--thread-id", help="LangGraph 线程 id；默认自动生成 case-based id。"
     ),
+    mode: RunMode = typer.Option(
+        RunMode.workflow,
+        "--mode",
+        help="运行模式：workflow=固定 LangGraph 流程；react=本地 ReAct Skill 调度。",
+    ),
+    max_steps: int = typer.Option(
+        12,
+        "--max-steps",
+        help="react 模式最大决策步数。",
+    ),
     only_first_two: bool = typer.Option(
         True,
         "--only-first-two/--full-pipeline",
@@ -96,6 +112,25 @@ def run(
     ws = _ensure_workspace(workspace)
     case_id, user_request = _read_request(case, request)
     thread = thread_id or case_id
+    console.print(
+        Panel.fit(
+            f"[bold green]Run started[/]  mode={mode.value}  case_id={case_id}  thread={thread}\n"
+            f"workspace = {ws}",
+            title="writeAgent",
+        )
+    )
+
+    if mode == RunMode.workflow:
+        result = WorkflowRunner().run(
+            case_id=case_id,
+            user_request=user_request,
+            workspace_root=ws,
+            references_dir=str(references) if references else None,
+            thread_id=thread,
+            include_optional_skills=not only_first_two,
+        )
+        _print_summary(result.final_state)
+        return
 
     init = initial_state(
         case_id=case_id,
@@ -104,26 +139,21 @@ def run(
         state_path=str(ws / "state.json"),
         references_dir=str(references) if references else None,
     )
-
     export_state_json(ws, dict(init))
-    console.print(
-        Panel.fit(
-            f"[bold green]Run started[/]  case_id={case_id}  thread={thread}\n"
-            f"workspace = {ws}",
-            title="writeAgent",
-        )
+    registry = SkillRegistry.from_skills_dir(SKILLS_DIR)
+    react_result = ReactRunner(
+        llm_client=llm_client,
+        skill_registry=registry,
+        skill_runner=SkillRunner(),
+        max_steps=max_steps,
+    ).run(
+        user_request=user_request,
+        workspace_root=ws,
+        state_path=ws / "state.json",
     )
-
-    checkpointer = make_checkpointer(ws)
-    graph = build_graph(checkpointer=checkpointer, include_optional_skills=not only_first_two)
-
-    final_state = graph.invoke(
-        init,
-        config={"configurable": {"thread_id": thread}},
-    )
-
-    export_state_json(ws, final_state)
-    _print_summary(final_state)
+    _print_react_summary(react_result)
+    if react_result.status == "error":
+        raise typer.Exit(code=1)
 
 
 # --------------------------------------------------------------------------- #
@@ -194,6 +224,37 @@ def _print_summary(state: dict) -> None:
             f"{h.get('duration_ms', 0)}ms  {h.get('message', '')}"
         )
     console.print(Panel("\n".join(table_lines), title="Run summary"))
+
+
+def _print_react_summary(result) -> None:
+    lines: list[str] = []
+    for step in result.steps:
+        observation = step.get("observation", {})
+        line = (
+            f"[{step.get('step')}] {step.get('action')} "
+            f"status={observation.get('status', '?')}"
+        )
+        if step.get("action") == "run_skill":
+            line += (
+                f" skill={step.get('action_input', {}).get('skill_name', '?')}"
+                f" produced={observation.get('produced_keys', [])}"
+                f" updated={observation.get('updated_keys', [])}"
+            )
+        if observation.get("stderr_tail"):
+            line += f" stderr={str(observation.get('stderr_tail'))[:300]}"
+        if observation.get("question"):
+            line += f" question={observation.get('question')}"
+        lines.append(line)
+    lines.extend(
+        [
+            f"Final status: {result.status}",
+            f"State path: {result.state_path}",
+            f"Trace path: {result.trace_path}",
+        ]
+    )
+    if result.answer:
+        lines.append(f"Answer: {result.answer}")
+    console.print(Panel("\n".join(lines), title="ReAct run summary"))
 
 
 def main() -> None:  # pragma: no cover

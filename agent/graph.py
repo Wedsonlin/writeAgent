@@ -9,10 +9,10 @@ Topology
       ↓
     skill1_requirement ──(missing_info?)──→ human_clarify ──→ skill1_requirement
       │                                                                 │
-      ├── error ──→ retry_with_fallback ──→ skill1_requirement / END   │
+      ├── error ──→ retry_with_fallback ──→ skill1_requirement / END    │
       │                                                                 │
       ↓ no missing_info                                                 │
-    skill2_literature ←──────────────────────────────────────────────────┘
+    skill2_literature ←─────────────────────────────────────────────────┘
       │
       ├── error ──→ retry_with_fallback ──→ skill2_literature / END
       ↓
