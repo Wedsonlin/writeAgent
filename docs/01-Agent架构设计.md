@@ -177,7 +177,7 @@ import 路径。Skill 中不允许 import LLM Gateway 或 `_shared.llm`。
 默认情况下 `run` 只跑 Skill 1 → Skill 2（`--only-first-two`），因为 Skill 3-6
 还是接口骨架；待第二阶段实现后改用 `--full-pipeline`。
 
-## 五、本地实测（Mock 模式）
+## 五、本地实测（Gateway Mock 模式）
 
 ```powershell
 > $env:WRITEAGENT_MOCK_LLM = "1"
@@ -196,8 +196,9 @@ import 路径。Skill 中不允许 import LLM Gateway 或 `_shared.llm`。
 └─────────────────────────────────────────┘
 ```
 
-两节点共耗时 ~1.4s（Mock 模式）。在真实 LLM 下 Skill 1 ≈ 4-8s，Skill 2
-（16 篇文献）≈ 30-50s，取决于模型与并发度。
+两节点通过 Agent/Sub-agent 预生成 intermediate，再由 Skill subprocess 确定性落盘。
+`WRITEAGENT_MOCK_LLM=1` 只作用于 `agent/llm_gateway.py`，不是 Skill 内部 mock。
+在真实 LLM 下，耗时主要取决于 Main/Sub-agent 模型调用与文献数量。
 
 ## 六、与 OpenClaw 模式的对应关系
 

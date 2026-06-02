@@ -27,12 +27,13 @@ writeAgent/
 ├── .env.example                   # LLM 凭证模板
 ├── pyproject.toml
 │
-├── docs/                          # 设计文档（5 份）
+├── docs/                          # 设计文档（6 份）
 │   ├── 00-总体方案与技术路线.md
 │   ├── 01-Agent架构设计.md
 │   ├── 02-OpenClaw适配方案.md
 │   ├── 03-统一输入输出字段规范.md
-│   └── 04-案例主题与执行计划.md
+│   ├── 04-案例主题与执行计划.md
+│   └── 05-Skill开发规范.md
 │
 ├── schemas/                       # 6 份 JSON Schema（跨 Skill 输入输出契约）
 │

@@ -2,9 +2,9 @@
 name: polish-and-plagiarism
 description: 语言润色与查重优化 Skill。当 state.formatted_draft 已生成、state.polished_draft 仍为空时触发；或用户提到"润色/查重/降重/语言优化"时触发。优化语句流畅度与学术性，修正语法/标点/逻辑问题，针对查重报告中重复段落提供改写建议。
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 homepage: https://example.org/writeagent
-metadata: {"openclaw":{"requires":{"bins":["python"],"env":["WRITEAGENT_LLM_API_KEY"]},"primaryEnv":"WRITEAGENT_LLM_API_KEY"}}
+metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 ---
 
 # 语言润色与查重优化 Skill（接口骨架）

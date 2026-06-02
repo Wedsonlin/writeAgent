@@ -2,9 +2,9 @@
 name: academic-formatting
 description: 学术格式排版与规范校验 Skill。当 state.draft 已生成、state.formatted_draft 仍为空时触发；或用户提到"格式校验/排版/Word 导出/PDF 导出/参考文献排序"时触发。统一标题层级、字体行距、图表编号、引用格式与参考文献排序，并产出校验报告。
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 homepage: https://example.org/writeagent
-metadata: {"openclaw":{"requires":{"bins":["python"],"env":["WRITEAGENT_LLM_API_KEY"]},"primaryEnv":"WRITEAGENT_LLM_API_KEY"}}
+metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 ---
 
 # 学术格式排版与规范校验 Skill（接口骨架）

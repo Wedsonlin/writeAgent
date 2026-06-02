@@ -2,9 +2,9 @@
 name: paper-outline
 description: 论文大纲与章节框架设计 Skill。当 state.writing_task 与 state.literature_report 已生成、state.outline 仍为空时触发；或用户提到"大纲/章节框架/outline/结构调整"时触发。输出含一级/二级/三级标题、每节核心要点、逻辑衔接说明、字数分配与引用文献映射的完整论文大纲。
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 homepage: https://example.org/writeagent
-metadata: {"openclaw":{"requires":{"bins":["python"],"env":["WRITEAGENT_LLM_API_KEY"]},"primaryEnv":"WRITEAGENT_LLM_API_KEY"}}
+metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 ---
 
 # 论文大纲与章节框架设计 Skill（接口骨架）

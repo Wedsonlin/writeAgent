@@ -2,9 +2,9 @@
 name: paper-content-generation
 description: 分章节内容生成 Skill。当 state.outline 已生成、state.draft 仍为空时触发；或用户提到"生成正文/分章节撰写/写初稿"时触发。按大纲逐章节产出学术化正文（含摘要、引言、方法、实验、讨论、结论），自动嵌入引用标号，控制各章节字数。
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 homepage: https://example.org/writeagent
-metadata: {"openclaw":{"requires":{"bins":["python"],"env":["WRITEAGENT_LLM_API_KEY"]},"primaryEnv":"WRITEAGENT_LLM_API_KEY"}}
+metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 ---
 
 # 分章节内容生成 Skill（接口骨架）
