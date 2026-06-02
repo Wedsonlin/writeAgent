@@ -1,9 +1,9 @@
 """Node functions for the writeAgent state graph.
 
-Each Skill node is an extremely thin wrapper around ``SkillRunner.run(...)``:
-all heavy lifting lives in ``skills/<name>/scripts/run.py``. This keeps the
-orchestrator agnostic to Skill implementation details and lets OpenClaw call
-the exact same scripts independently.
+Each Skill node keeps the subprocess boundary around ``SkillRunner.run(...)``.
+For Skills that now require Agent-native intermediate data, the workflow layer
+runs a fixed Sub-agent preflight before invoking the same ``scripts/run.py``
+entrypoint.
 """
 
 from __future__ import annotations
@@ -12,9 +12,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ..a2a.types import SubAgentSpec
+from ..clarification import ask_clarification
+from ..llm_gateway import LLMGateway
+from ..skill_runner import SkillRunner
+from ..state_store import MISSING, StateStore, get_path, load_state
+from ..subagents.runtime import SubAgentRuntime
+from ..trace_store import TraceStore
 from .checkpointer import export_state_json
-from .llm_client import ask_clarification
-from .skill_runner import SkillRunner
 from .state import HistoryEntry, WriteAgentState
 
 
@@ -32,6 +37,21 @@ def _skill_node(skill_name: str, *, stage_running: str, stage_done: str, node_na
 
     def node(state: WriteAgentState) -> dict[str, Any]:
         runner_args: list[str] = []
+        preflight_error = _ensure_intermediate_for_skill(skill_name, state)
+        if preflight_error:
+            return {
+                "stage": "failed",
+                "error": preflight_error,
+                "history": [
+                    {
+                        "skill": skill_name,
+                        "ts": _now_iso(),
+                        "status": "error",
+                        "message": preflight_error[:500],
+                    }
+                ],
+                "next_after_retry": node_name,
+            }
         result = _RUNNER.run(skill_name, state["state_path"], extra_args=runner_args)
 
         history: list[HistoryEntry] = [
@@ -87,6 +107,74 @@ def _skill_node(skill_name: str, *, stage_running: str, stage_done: str, node_na
 
     node.__name__ = f"{skill_name.replace('-', '_')}_node"
     return node
+
+
+def _ensure_intermediate_for_skill(skill_name: str, state: WriteAgentState) -> str | None:
+    if skill_name not in {"writing-requirement-analysis", "literature-review"}:
+        return None
+    state_path = Path(state["state_path"])
+    workspace_root = Path(state["workspace_root"])
+    current = load_state(state_path)
+    specs: list[SubAgentSpec] = []
+    if skill_name == "writing-requirement-analysis" and get_path(current, "intermediate.requirement.raw_writing_task") is MISSING:
+        specs.append(
+            SubAgentSpec(
+                subagent_id="wf_sa_requirement",
+                parent_agent_id="workflow",
+                role="requirement analysis specialist",
+                task="Convert the user request into a structured writing task draft.",
+                input_keys=["user_request"],
+                output_key="intermediate.requirement.raw_writing_task",
+                skill_context=["writing-requirement-analysis"],
+                prompt_refs=["skills/writing-requirement-analysis/prompts/extract_writing_task.md"],
+                output_schema="WritingTask",
+                allowed_tools=["inspect_state_subset", "read_skill_prompt", "read_skill_context"],
+            )
+        )
+    if skill_name == "literature-review":
+        if get_path(current, "intermediate.literature_review.paper_claims") is MISSING:
+            specs.append(
+                SubAgentSpec(
+                    subagent_id="wf_sa_literature_claims",
+                    parent_agent_id="workflow",
+                    role="literature analysis specialist",
+                    task="Extract key claims and evidence strength from collected reference papers.",
+                    input_keys=["writing_task", "references.raw_papers"],
+                    output_key="intermediate.literature_review.paper_claims",
+                    skill_context=["literature-review"],
+                    prompt_refs=["skills/literature-review/prompts/extract_claims.md"],
+                    output_schema="PaperClaimsExtraction",
+                    allowed_tools=["inspect_state_subset", "read_skill_prompt", "read_skill_context"],
+                )
+            )
+        if get_path(current, "intermediate.literature_review.synthesis") is MISSING:
+            specs.append(
+                SubAgentSpec(
+                    subagent_id="wf_sa_literature_synthesis",
+                    parent_agent_id="workflow",
+                    role="literature synthesis specialist",
+                    task="Synthesize paper claims into clusters, consensus, controversies, and research gaps.",
+                    input_keys=["writing_task", "intermediate.literature_review.paper_claims"],
+                    output_key="intermediate.literature_review.synthesis",
+                    skill_context=["literature-review"],
+                    prompt_refs=["skills/literature-review/prompts/synthesize.md"],
+                    output_schema="LiteratureSynthesis",
+                    allowed_tools=["inspect_state_subset", "read_skill_prompt", "read_skill_context"],
+                )
+            )
+    if not specs:
+        return None
+    trace_store = TraceStore(workspace_root)
+    runtime = SubAgentRuntime(
+        llm_gateway=LLMGateway(trace_store=trace_store),
+        state_store=StateStore(),
+        trace_store=trace_store,
+    )
+    for spec in specs:
+        result = runtime.run(spec, state_path)
+        if result.status != "completed":
+            return f"Workflow preflight Sub-agent {spec.subagent_id} failed: {result.errors}"
+    return None
 
 
 # --------------------------------------------------------------------------- #

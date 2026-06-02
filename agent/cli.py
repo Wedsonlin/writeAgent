@@ -26,13 +26,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from . import llm_client
-from .checkpointer import export_state_json, make_checkpointer
-from .graph import build_graph
 from .react.skill_registry import SkillRegistry
 from .react_runner import ReactRunner
 from .skill_runner import SKILLS_DIR, SkillRunner
-from .state import initial_state
+from .workflow import build_graph, export_state_json, initial_state, make_checkpointer
 from .workflow_runner import WorkflowRunner
 
 
@@ -98,7 +95,7 @@ def run(
         help="运行模式：workflow=固定 LangGraph 流程；react=本地 ReAct Skill 调度。",
     ),
     max_steps: int = typer.Option(
-        12,
+        24,
         "--max-steps",
         help="react 模式最大决策步数。",
     ),
@@ -142,7 +139,6 @@ def run(
     export_state_json(ws, dict(init))
     registry = SkillRegistry.from_skills_dir(SKILLS_DIR)
     react_result = ReactRunner(
-        llm_client=llm_client,
         skill_registry=registry,
         skill_runner=SkillRunner(),
         max_steps=max_steps,

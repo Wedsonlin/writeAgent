@@ -10,10 +10,10 @@ Pipeline:
 1. Load state, fetch writing_task.
 2. Collect references from --refs / --pdf-dir / --text-file or, when none, from
    writing_task.references_seed.
-3. For each paper: run prompts.EXTRACT_PROMPT (or mock) → enrich with key_claims +
-   evidence_strength.
-4. Run prompts.SYNTHESIS_PROMPT once over all papers to obtain clusters,
-   consensus/controversies/research_gaps + alignments.
+3. Read Sub-agent intermediate paper claims from
+   ``state.intermediate.literature_review.paper_claims``.
+4. Read Sub-agent intermediate synthesis from
+   ``state.intermediate.literature_review.synthesis``.
 5. Citation formatter produces GB/T 7714-2015 + APA 7 strings.
 6. Validate against LiteratureReport schema; write back to state.json; render
    Markdown to outputs/02-文献梳理报告.md.
@@ -40,19 +40,12 @@ from _shared.io import (  # noqa: E402
     save_state,
     write_output,
 )
-from _shared.llm import is_mock_mode, structured_json  # noqa: E402
 from _shared.schemas import LiteratureReport  # noqa: E402
 
 from citation_formatter import format_apa, format_gb7714  # noqa: E402
 from parsers.bibtex import parse_bibtex_file  # noqa: E402
 from parsers.pdf import parse_pdf_dir, parse_pdf_file  # noqa: E402
 from parsers.text import parse_text_file  # noqa: E402
-from prompts import (  # noqa: E402
-    build_extract_messages,
-    build_extract_mock,
-    build_synthesis_messages,
-    build_synthesis_mock,
-)
 from renderer import render_literature_report  # noqa: E402
 
 
@@ -90,8 +83,8 @@ def main() -> int:
                 file=sys.stderr,
             )
 
-        papers = _enrich_claims(papers)
-        synthesis = _synthesize(task.get("core_arguments", []) or [], papers)
+        papers = _enrich_claims(papers, state)
+        synthesis = _synthesize(state)
         papers = _merge_alignments(papers, synthesis.get("alignments", []))
 
         style = (
@@ -226,26 +219,17 @@ def _resolve_path(p: str | Path) -> str:
     return str((REPO_ROOT / path).resolve())
 
 
-def _enrich_claims(papers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _enrich_claims(papers: list[dict[str, Any]], state: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_claims = _required_intermediate(
+        state,
+        "intermediate.literature_review.paper_claims",
+        "Run a literature analysis Sub-agent before this Skill.",
+    )
+    claims = _normalize_claims(raw_claims)
+    claims_by_id = {str(item.get("id") or item.get("paper_id")): item for item in claims if isinstance(item, dict)}
     out: list[dict[str, Any]] = []
     for p in papers:
-        try:
-            if is_mock_mode():
-                extracted = build_extract_mock(p)
-            else:
-                msgs = build_extract_messages(p)
-                extracted = structured_json(
-                    system_prompt=msgs[0]["content"],
-                    user_prompt=msgs[1]["content"],
-                    temperature=0.1,
-                )
-        except Exception as exc:  # noqa: BLE001
-            print(
-                f"[skill2] WARN: extract failed for {p.get('id', '?')}: {exc}",
-                file=sys.stderr,
-            )
-            extracted = {"key_claims": [], "evidence_strength": "weak"}
-
+        extracted = claims_by_id.get(str(p.get("id"))) or {}
         merged = dict(p)
         merged["key_claims"] = extracted.get("key_claims", []) or []
         merged["evidence_strength"] = extracted.get("evidence_strength", "weak")
@@ -254,25 +238,44 @@ def _enrich_claims(papers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def _synthesize(
-    core_arguments: list[str], papers: list[dict[str, Any]]
-) -> dict[str, Any]:
-    if not papers:
-        return {
-            "clusters": [],
-            "timeline_summary": "",
-            "consensus": [],
-            "controversies": [],
-            "research_gaps": [],
-            "alignments": [],
-        }
-    if is_mock_mode():
-        return build_synthesis_mock(core_arguments, papers)
-    msgs = build_synthesis_messages(core_arguments, papers)
-    return structured_json(
-        system_prompt=msgs[0]["content"],
-        user_prompt=msgs[1]["content"],
-        temperature=0.2,
+def _synthesize(state: dict[str, Any]) -> dict[str, Any]:
+    synthesis = _required_intermediate(
+        state,
+        "intermediate.literature_review.synthesis",
+        "Run a literature synthesis Sub-agent before this Skill.",
+    )
+    if not isinstance(synthesis, dict):
+        raise ValueError("state.intermediate.literature_review.synthesis must be a JSON object.")
+    return synthesis
+
+
+def _required_intermediate(state: dict[str, Any], path: str, hint: str) -> Any:
+    value = _get_path(state, path)
+    if value is None:
+        raise ValueError(f"{path} missing. {hint}")
+    return value
+
+
+def _get_path(root: dict[str, Any], dotted_path: str) -> Any:
+    current: Any = root
+    for part in dotted_path.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return None
+        current = current[part]
+    return current
+
+
+def _normalize_claims(raw_claims: Any) -> list[dict[str, Any]]:
+    if isinstance(raw_claims, list):
+        return [item for item in raw_claims if isinstance(item, dict)]
+    if isinstance(raw_claims, dict):
+        for key in ("paper_claims", "papers", "claims"):
+            value = raw_claims.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+    raise ValueError(
+        "state.intermediate.literature_review.paper_claims must be a list "
+        "or an object containing paper_claims/papers/claims."
     )
 
 

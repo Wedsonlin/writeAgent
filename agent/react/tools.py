@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..a2a.types import SubAgentResult, SubAgentSpec
 from ..skill_runner import SkillRunner
+from ..subagents.runtime import SubAgentRuntime
 from .skill_registry import SkillRegistry
 
 
@@ -31,10 +33,12 @@ class ReactToolbox:
         *,
         skill_registry: SkillRegistry,
         skill_runner: SkillRunner,
+        subagent_runtime: SubAgentRuntime | None = None,
         tail_chars: int = 3000,
     ) -> None:
         self.skill_registry = skill_registry
         self.skill_runner = skill_runner
+        self.subagent_runtime = subagent_runtime
         self.tail_chars = tail_chars
 
     def run_skill(self, skill_name: str, reason: str, state_path: Path) -> dict[str, Any]:
@@ -50,8 +54,30 @@ class ReactToolbox:
     def inspect_state(self, state_path: Path) -> dict[str, Any]:
         return inspect_state(state_path)
 
+    def delegate_to_subagent(self, spec: SubAgentSpec, state_path: Path) -> dict[str, Any]:
+        if self.subagent_runtime is None:
+            return {"tool": "delegate_to_subagent", "status": "fatal", "error": "SubAgentRuntime is not configured."}
+        result = self.subagent_runtime.run(spec, state_path)
+        return subagent_result_to_observation(result)
+
     def finish(self, answer: str, state_path: Path) -> dict[str, Any]:
         return finish(answer, state_path)
+
+
+def subagent_result_to_observation(result: SubAgentResult) -> dict[str, Any]:
+    return {
+        "tool": "delegate_to_subagent",
+        "subagent_id": result.subagent_id,
+        "parent_agent_id": result.parent_agent_id,
+        "status": result.status,
+        "output_key": result.output_key,
+        "result_summary": result.result_summary,
+        "artifacts": result.artifacts,
+        "errors": result.errors,
+        "needs_followup": result.needs_followup,
+        "followup_question": result.followup_question,
+        "usage": result.usage,
+    }
 
 
 def run_skill(

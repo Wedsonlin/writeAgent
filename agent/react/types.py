@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 
 ReactRunStatus = Literal["finished", "ask_user", "error", "max_steps_exceeded"]
-ReactActionName = Literal["run_skill", "inspect_state", "ask_user", "finish"]
+ReactActionName = Literal["inspect_state", "delegate_to_subagent", "run_skill", "ask_user", "finish"]
 
 
 @dataclass(frozen=True)

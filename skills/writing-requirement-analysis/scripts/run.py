@@ -4,9 +4,9 @@ Usage::
 
     python run.py --state /path/to/state.json [--user-request "..."]
 
-The script reads ``state.user_request``, asks the LLM (or the mock fallback) to
-produce a structured ``writing_task`` JSON object, enriches it with a chapter
-template and a journal-style profile, validates it against
+The script reads ``state.intermediate.requirement.raw_writing_task`` produced by
+a dynamic Sub-agent, enriches it with a chapter template and a journal-style
+profile, validates it against
 ``schemas/writing_task.schema.json`` (via the pydantic model in
 ``_shared.schemas``), then writes the result back to ``state.json`` and renders
 a Markdown summary under ``outputs/01-论文写作任务书.md``.
@@ -17,7 +17,6 @@ Exit code 0 on success (even when missing_info is non-empty); 1 on hard errors.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 import traceback
@@ -37,12 +36,10 @@ from _shared.io import (  # noqa: E402
     save_state,
     write_output,
 )
-from _shared.llm import is_mock_mode, structured_json  # noqa: E402
 from _shared.schemas import WritingTask  # noqa: E402
 
 from chapter_template import build_chapter_framework  # noqa: E402
 from journal_match import match_journal_style  # noqa: E402
-from prompts import build_messages, build_mock_payload  # noqa: E402
 from renderer import render_task_book  # noqa: E402
 
 
@@ -76,7 +73,7 @@ def main() -> int:
 
     started = time.perf_counter()
     try:
-        task_payload = _extract_writing_task(user_request)
+        task_payload = _extract_writing_task(state)
     except Exception as exc:  # noqa: BLE001
         traceback.print_exc(file=sys.stderr)
         append_history(state, "writing-requirement-analysis", "error", message=str(exc))
@@ -116,20 +113,28 @@ def main() -> int:
 # --------------------------------------------------------------------------- #
 
 
-def _extract_writing_task(user_request: str) -> dict[str, Any]:
-    """Ask the LLM (or mock) for a structured payload."""
-    if is_mock_mode():
-        return build_mock_payload(user_request)
-
-    messages = build_messages(user_request)
-    payload = structured_json(
-        system_prompt=messages[0]["content"],
-        user_prompt=messages[1]["content"],
-        temperature=0.15,
-    )
+def _extract_writing_task(state: dict[str, Any]) -> dict[str, Any]:
+    """Read the Sub-agent generated structured payload from state.intermediate."""
+    payload = _get_path(state, "intermediate.requirement.raw_writing_task")
+    if payload is None:
+        raise ValueError(
+            "state.intermediate.requirement.raw_writing_task missing. "
+            "Run a requirement analysis Sub-agent before this Skill."
+        )
     if not isinstance(payload, dict):
-        raise ValueError(f"LLM did not return a JSON object: {payload!r}")
+        raise ValueError(
+            "state.intermediate.requirement.raw_writing_task must be a JSON object."
+        )
     return payload
+
+
+def _get_path(root: dict[str, Any], dotted_path: str) -> Any:
+    current: Any = root
+    for part in dotted_path.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return None
+        current = current[part]
+    return current
 
 
 def _enrich(payload: dict[str, Any]) -> dict[str, Any]:

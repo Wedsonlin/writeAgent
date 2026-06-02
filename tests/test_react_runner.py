@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from agent.llm_gateway import LLMGateway
 from agent.react.skill_registry import SkillRegistry
 from agent.react_runner import ReactRunner
 from agent.skill_runner import SkillResult
@@ -28,11 +29,17 @@ def test_react_runner_full_writing_uses_multiple_skills(tmp_path: Path) -> None:
     )
 
     called = _called_skills(result.steps)
+    delegated = _delegated_outputs(result.steps)
     assert result.status == "finished"
     assert called == list(OUTPUT_BY_SKILL.keys())
+    assert "intermediate.requirement.raw_writing_task" in delegated
+    assert "intermediate.literature_review.paper_claims" in delegated
+    assert "intermediate.literature_review.synthesis" in delegated
     state = json.loads(result.state_path.read_text(encoding="utf-8"))
     assert "polished_draft" in state
     assert result.trace_path.exists()
+    assert (result.state_path.parent / "subagent_trace.jsonl").exists()
+    assert (result.state_path.parent / "llm_trace.jsonl").exists()
 
 
 def test_react_runner_outline_request_skips_format_and_polish(tmp_path: Path) -> None:
@@ -43,9 +50,13 @@ def test_react_runner_outline_request_skips_format_and_polish(tmp_path: Path) ->
     assert result.status == "finished"
     assert called == [
         "writing-requirement-analysis",
-        "literature-review",
         "paper-outline",
     ]
+    assert _delegated_outputs(result.steps) == [
+        "intermediate.requirement.raw_writing_task",
+        "intermediate.outline.raw_outline",
+    ]
+    assert "literature-review" not in called
     assert "academic-formatting" not in called
     assert "polish-and-plagiarism" not in called
 
@@ -57,6 +68,7 @@ def test_react_runner_polish_without_draft_asks_user(tmp_path: Path) -> None:
     assert result.status == "ask_user"
     assert "初稿" in result.answer
     assert _called_skills(result.steps) == []
+    assert _delegated_outputs(result.steps) == []
 
 
 def test_react_runner_vague_request_asks_user(tmp_path: Path) -> None:
@@ -65,6 +77,7 @@ def test_react_runner_vague_request_asks_user(tmp_path: Path) -> None:
 
     assert result.status == "ask_user"
     assert _called_skills(result.steps) == []
+    assert _delegated_outputs(result.steps) == ["intermediate.requirement.raw_writing_task"]
 
 
 def test_react_runner_skill_failure_surfaces_observation(tmp_path: Path) -> None:
@@ -77,8 +90,9 @@ def test_react_runner_skill_failure_surfaces_observation(tmp_path: Path) -> None
     )
 
     assert result.status == "ask_user"
-    assert result.steps[0]["observation"]["status"] == "error"
-    assert "simulated failure" in result.steps[0]["observation"]["stderr_tail"]
+    assert result.steps[0]["action"] == "delegate_to_subagent"
+    assert result.steps[1]["observation"]["status"] == "error"
+    assert "simulated failure" in result.steps[1]["observation"]["stderr_tail"]
 
 
 def test_react_runner_repairs_invalid_json_once(tmp_path: Path) -> None:
@@ -188,11 +202,11 @@ def _run(
     *,
     llm: Any | None = None,
     skill_runner: Any | None = None,
-    max_steps: int = 12,
+    max_steps: int = 24,
 ):
     workspace = tmp_path / "workspace"
     return ReactRunner(
-        llm_client=llm or EchoMockLLM(),
+        llm_gateway=LLMGateway(transport=llm or EchoMockLLM()),
         skill_registry=registry,
         skill_runner=skill_runner or FakeSkillRunner(),
         max_steps=max_steps,
@@ -208,6 +222,14 @@ def _called_skills(steps: list[dict[str, Any]]) -> list[str]:
         step.get("action_input", {}).get("skill_name")
         for step in steps
         if step.get("action") == "run_skill"
+    ]
+
+
+def _delegated_outputs(steps: list[dict[str, Any]]) -> list[str]:
+    return [
+        step.get("action_input", {}).get("output_key")
+        for step in steps
+        if step.get("action") == "delegate_to_subagent"
     ]
 
 

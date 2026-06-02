@@ -5,7 +5,7 @@ from pathlib import Path
 
 from agent.react.skill_registry import SkillRegistry
 from agent.react.tools import inspect_state, run_skill
-from agent.react_runner import parse_react_action
+from agent.react.actions import parse_react_action
 from agent.skill_runner import SkillResult
 
 

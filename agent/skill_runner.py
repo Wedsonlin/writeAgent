@@ -90,7 +90,7 @@ class SkillRunner:
             cmd.extend(extra_args)
 
         env = os.environ.copy()
-        # Allow Skills to import shared modules via `from _shared.llm import ...`
+        # Allow Skills to import deterministic shared modules under skills/_shared.
         existing_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = ( # PYTHONPATH=skills:/some/old/path
             str(SKILLS_DIR) + (os.pathsep + existing_path if existing_path else "")

@@ -7,8 +7,9 @@ each Skill based on its ``SKILL.md`` description.
 Public entry points
 -------------------
 - ``agent.cli:app``      Typer CLI exposed as ``python -m agent`` / ``writeagent``.
-- ``agent.graph:build_graph()``  Returns a compiled LangGraph state machine.
-- ``agent.state:WriteAgentState``  Typed channel definitions + reducers.
+- ``agent.workflow:build_graph()``  Returns a compiled LangGraph state machine.
+- ``agent.workflow:WriteAgentState``  Typed channel definitions + reducers.
+- ``agent.workflow_runner:WorkflowRunner``  Fixed pipeline entry wrapper.
 """
 
 __version__ = "0.1.0"

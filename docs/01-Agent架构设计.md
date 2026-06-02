@@ -9,7 +9,14 @@ flowchart TB
     entry -->|平台| oc[OpenClaw ReAct 大脑]
 
     subgraph standalone [独立模式 · LangGraph 编排]
-        std --> g[StateGraph]
+        std --> mode{workflow or react}
+        mode --> g[workflow StateGraph]
+        mode --> rg[react StateGraph]
+        rg --> mainAgent[Main ReAct Agent]
+        mainAgent -->|delegate_to_subagent| subAgent[Dynamic Sub-agent]
+        subAgent --> gateway[LLM Gateway]
+        subAgent --> intermediate[state.intermediate]
+        mainAgent -->|run_skill| skillCall[Skill subprocess]
         g --> n1[skill1_requirement]
         n1 -- missing_info blocker --> hc[human_clarify]
         hc --> n1
@@ -36,14 +43,31 @@ flowchart TB
 
     n1 -. subprocess .-> s1
     n2 -. subprocess .-> s2
+    skillCall -. subprocess .-> s1
+    skillCall -. subprocess .-> s2
+    intermediate --> skills
     call --> s1 & s2 & s3to6
     skills --> state[(.writeagent/state.json + outputs/)]
     ckpt -. 旁路导出 .-> state
 ```
 
+本地运行包含两种 LangGraph 模式：固定流水线位于 `agent/workflow/graph.py`
+与 `agent/workflow/nodes.py`；本地 ReAct 调度位于 `agent/react/graph.py`
+与 `agent/react/nodes.py`。两者共享 `agent/skill_runner.py` 的 Skill subprocess
+边界。所有模型调用集中在 `agent/llm_gateway.py`；Skill script 不直接调用 LLM。
+
+核心职责边界：
+
+- Main Agent plans：`agent/react_runner.py` 与 `agent/react/*` 只负责规划、委派、工具调用和终止判断。
+- Sub-agents reason：`agent/subagents/runtime.py` 根据 `SubAgentSpec` 动态执行临时 Sub-agent，不写固定专家类。
+- Skills validate and execute：`skills/*/scripts/run.py` 读取 `state.intermediate`，执行确定性校验、增强、渲染和正式字段写入。
+- LLM Gateway governs：`agent/llm_gateway.py` 统一 chat、structured JSON、repair、retry、mock 与 trace。
+- State coordinates：`state.json` 协调 Main Agent、Sub-agent 与 Skill。
+- Trace makes the system observable：`react_trace.json`、`subagent_trace.jsonl`、`llm_trace.jsonl` 记录全链路。
+
 ## 二、LangGraph 状态图
 
-### 1. 状态通道（[agent/state.py](../agent/state.py)）
+### 1. 状态通道（[agent/workflow/state.py](../agent/workflow/state.py)）
 
 `WriteAgentState` 是一个 `TypedDict`，每个字段都对应 `state.schema.json`
 中的顶层属性：
@@ -74,7 +98,7 @@ class WriteAgentState(TypedDict, total=False):
 `history` 字段绑定 `operator.add` reducer，使每个节点的运行记录"累加"到全局
 history；其它 Skill 输出字段保持"latest-wins"语义。
 
-### 2. 节点列表（[agent/nodes.py](../agent/nodes.py)）
+### 2. 节点列表（[agent/workflow/nodes.py](../agent/workflow/nodes.py)）
 
 | 节点名 | 类型 | 说明 |
 | --- | --- | --- |
@@ -90,7 +114,7 @@ history；其它 Skill 输出字段保持"latest-wins"语义。
 所有 Skill 节点统一通过 `_skill_node(skill_name, ...)` 工厂构建——节点本身
 极薄，业务逻辑全部在 Skill 脚本里。
 
-### 3. 边（[agent/graph.py](../agent/graph.py)）
+### 3. 边（[agent/workflow/graph.py](../agent/workflow/graph.py)）
 
 入口边：`START → skill1_requirement`
 
@@ -107,7 +131,7 @@ history；其它 Skill 输出字段保持"latest-wins"语义。
 
 出口边：`skill6_polish → END`
 
-### 4. 检查点（[agent/checkpointer.py](../agent/checkpointer.py)）
+### 4. 检查点（[agent/workflow/checkpointer.py](../agent/workflow/checkpointer.py)）
 
 - 使用 `langgraph.checkpoint.sqlite.SqliteSaver` 把每个节点完成时的 state 写入 `.writeagent/checkpoints.sqlite`。
 - 同时调用 `export_state_json` 把"对外可见"的字段镜像到 `.writeagent/state.json`，让 OpenClaw 端或外部审阅工具能直接读取。
@@ -136,8 +160,9 @@ result = SkillRunner().run(
 # result.state_after  是子进程退出后磁盘上的最新 state dict
 ```
 
-子进程在启动时被注入 `PYTHONPATH=<repo>/skills`，使 `from _shared.llm import ...`
-能解析；这样 Skills 既不必发布成 wheel，也不必硬编码相对 import 路径。
+子进程在启动时被注入 `PYTHONPATH=<repo>/skills`，使 `_shared.io` 与
+`_shared.schemas` 能解析；这样 Skills 既不必发布成 wheel，也不必硬编码相对
+import 路径。Skill 中不允许 import LLM Gateway 或 `_shared.llm`。
 
 ## 四、CLI（[agent/cli.py](../agent/cli.py)）
 
@@ -178,8 +203,8 @@ result = SkillRunner().run(
 
 | 本地 LangGraph | OpenClaw ReAct |
 | --- | --- |
-| `agent/graph.py` 决定下一个节点 | OpenClaw LLM 读 SKILL.md.description 决定 |
-| `agent/nodes.py` 跑 `_skill_node` | OpenClaw 直接 bash 调 `python run.py` |
+| `agent/workflow/graph.py` 决定下一个节点 | OpenClaw LLM 读 SKILL.md.description 决定 |
+| `agent/workflow/nodes.py` 跑 `_skill_node` | OpenClaw 直接 bash 调 `python run.py` |
 | `SqliteSaver` 做检查点 | OpenClaw 自己的会话历史 |
 | `human_clarify` 节点用 stdin 提问 | OpenClaw 在对话窗口提问 |
 | `retry_with_fallback` 节点 | OpenClaw LLM 看到错误后自行决定 |
