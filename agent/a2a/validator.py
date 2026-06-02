@@ -9,10 +9,10 @@ from .types import A2AError, SubAgentSpec
 
 
 ALLOWED_SUBAGENT_TOOLS = {
-    "inspect_state_subset",
-    "read_skill_prompt",
-    "read_skill_context",
-    "summarize_context",
+    "inspect_state",
+    "read_state_keys",
+    "write_intermediate",
+    "submit_subagent_result",
 }
 
 FORBIDDEN_STATE_KEYS = {

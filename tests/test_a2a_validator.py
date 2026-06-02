@@ -13,7 +13,7 @@ def test_subagent_spec_accepts_intermediate_write() -> None:
         input_keys=["user_request"],
         output_key="intermediate.requirement.raw_writing_task",
         output_schema="WritingTask",
-        allowed_tools=["inspect_state_subset", "read_skill_prompt"],
+        allowed_tools=["inspect_state", "read_state_keys"],
     )
 
     assert validate_subagent_spec(spec) == []

@@ -1,17 +1,16 @@
-"""Local ReAct-style Skill dispatch helpers for writeAgent."""
+"""LangChain-native ReAct orchestration helpers for writeAgent."""
 
-from .actions import parse_react_action
 from .graph import build_graph
+from .model_factory import LangChainModelFactory
 from .nodes import ReactNodes
 from .skill_registry import SkillRegistry
-from .types import ReactAction, ReactRunResult, SkillSpec
+from .types import ReactRunResult, SkillSpec
 
 __all__ = [
-    "ReactAction",
+    "LangChainModelFactory",
     "ReactNodes",
     "ReactRunResult",
     "SkillRegistry",
     "SkillSpec",
     "build_graph",
-    "parse_react_action",
 ]

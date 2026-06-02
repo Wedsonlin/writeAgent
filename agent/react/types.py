@@ -1,4 +1,4 @@
-"""Typed data structures for the local ReAct runner."""
+"""Typed data structures for the LangChain-native ReAct runner."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Any, Literal
 
 
 ReactRunStatus = Literal["finished", "ask_user", "error", "max_steps_exceeded"]
-ReactActionName = Literal["inspect_state", "delegate_to_subagent", "run_skill", "ask_user", "finish"]
 
 
 @dataclass(frozen=True)
@@ -25,16 +24,6 @@ class SkillSpec:
 
 
 @dataclass
-class ReactAction:
-    """One JSON action emitted by the ReAct brain."""
-
-    thought: str
-    action: ReactActionName
-    action_input: dict[str, Any] = field(default_factory=dict)
-    raw: str = ""
-
-
-@dataclass
 class ReactRunResult:
     """Final result returned by ``ReactRunner.run``."""
 
@@ -46,3 +35,6 @@ class ReactRunResult:
 
 
 ReactObservation = dict[str, Any]
+
+
+ToolCallRecord = dict[str, Any]

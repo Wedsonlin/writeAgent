@@ -1,13 +1,14 @@
-"""Build the LangGraph ``StateGraph`` for local ReAct scheduling."""
+"""Build the LangGraph graph for LangChain-native Main Agent ReAct."""
 
 from __future__ import annotations
 
-from .nodes import ReactNodes, route_after_decide, route_after_execute
-from .state import ReactGraphState
+from .nodes import ReactNodes
+from .routers import route_after_main_agent, route_after_main_tools
+from .state import MainAgentState
 
 
 def build_graph(nodes: ReactNodes):
-    """Build the LangGraph state machine for local ReAct scheduling."""
+    """Build the Main Agent tool-calling state machine."""
     try:
         from langgraph.graph import END, START, StateGraph  # type: ignore[import-not-found]
     except ImportError as exc:
@@ -16,23 +17,23 @@ def build_graph(nodes: ReactNodes):
             "Run `pip install -r requirements-orchestrator.txt`."
         ) from exc
 
-    graph = StateGraph(ReactGraphState)
-    graph.add_node("decide_action", nodes.decide_action_node)
-    graph.add_node("execute_action", nodes.execute_action_node)
-    graph.add_edge(START, "decide_action")
+    graph = StateGraph(MainAgentState)
+    graph.add_node("main_agent", nodes.main_agent_node)
+    graph.add_node("main_tools", nodes.main_tools_node)
+    graph.add_edge(START, "main_agent")
     graph.add_conditional_edges(
-        "decide_action",
-        route_after_decide,
+        "main_agent",
+        route_after_main_agent,
         {
-            "execute_action": "execute_action",
+            "main_tools": "main_tools",
             "__end__": END,
         },
     )
     graph.add_conditional_edges(
-        "execute_action",
-        route_after_execute,
+        "main_tools",
+        route_after_main_tools,
         {
-            "decide_action": "decide_action",
+            "main_agent": "main_agent",
             "__end__": END,
         },
     )

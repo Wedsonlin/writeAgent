@@ -5,7 +5,6 @@ from pathlib import Path
 
 from agent.react.skill_registry import SkillRegistry
 from agent.react.tools import inspect_state, run_skill
-from agent.react.actions import parse_react_action
 from agent.skill_runner import SkillResult
 
 
@@ -25,13 +24,8 @@ def test_skill_registry_parses_frontmatter_and_entrypoints(tmp_path: Path) -> No
     assert "executable: false" in rendered
 
 
-def test_parse_react_action_accepts_code_fences_and_chatter() -> None:
-    action = parse_react_action(
-        'Here is the action:\n```json\n{"thought":"t","action":"finish","action_input":{"answer":"done"}}\n```'
-    )
-
-    assert action.action == "finish"
-    assert action.action_input["answer"] == "done"
+def test_legacy_json_action_parser_is_not_part_of_react_entrypoint() -> None:
+    assert not (Path(__file__).resolve().parents[1] / "agent" / "react" / "actions.py").exists()
 
 
 def test_run_skill_returns_state_diff_and_tails(tmp_path: Path) -> None:

@@ -6,4 +6,5 @@
 
 langgraph>=0.2.30
 langchain-core>=0.3.0
+langchain-openai
 typer>=0.12.0

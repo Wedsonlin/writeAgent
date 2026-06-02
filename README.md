@@ -1,8 +1,8 @@
 # writeAgent · 论文写作 Agent
 
-面向学术论文写作的智能 Agent，遵循"Main Agent 规划 + 动态 Sub-agent 推理 + Skill 确定性执行"模式，采用 **本地 ReAct + OpenClaw 兼容 Skill** 的双轨架构：
+面向学术论文写作的智能 Agent，遵循"Main Agent 规划 + 动态 Sub-agent 推理 + Skill 确定性执行"模式，采用 **LangChain-native ReAct + OpenClaw 兼容 Skill** 的双轨架构：
 
-- **本地 ReAct 模式** `python -m agent run`：LangGraph ReAct `StateGraph` 读取 `SKILL.md` / Skill Registry，由 Main Agent 输出严格 JSON action。复杂认知任务通过 `delegate_to_subagent` 动态派生临时 Sub-agent，Sub-agent 写 `state.intermediate`，再由 Skill script 校验、渲染和落盘。
+- **本地 ReAct 模式** `python -m agent run`：LangGraph `StateGraph` 编排 LangChain ChatModel tool-calling。Main Agent 通过 `model.bind_tools(...)` 注册 `inspect_state / run_skill / delegate_to_subagent / ask_user`，由 `AIMessage.tool_calls` 驱动工具执行。复杂认知任务通过 `delegate_to_subagent` 派生独立 SubAgent ReAct graph，SubAgent 写 `state.intermediate`，再由 Skill script 校验、渲染和落盘。
 - **OpenClaw 模式**：把 `./skills/` 整体作为工作区 Skill 安装；OpenClaw 自带ReAct 大脑依 `SKILL.md` 的 `description` 字段自主调度，**不依赖 LangGraph**。
 
 两种模式共享同一份 `./skills/*/scripts/run.py` 业务实现 + 同一份 `state.json`。本地 ReAct 模式用于 Agent-native 调试与演示；OpenClaw 模式用于平台部署。Skill script 不直接调用 LLM，也不生成专业认知内容，只读取结构化输入并执行 schema validation、确定性增强、格式化、渲染和正式字段写入。
@@ -38,13 +38,13 @@ writeAgent/
 │
 ├── agent/                         # 本地 ReAct 编排层
 │   ├── cli.py                     # `python -m agent run|inspect`
-│   ├── react_runner.py            # LangGraph ReAct StateGraph 入口
+│   ├── react_runner.py            # LangChain tool-calling ReAct 入口
 │   ├── llm_gateway.py             # 唯一模型调用治理层
 │   ├── state_store.py             # state.json 读写 / intermediate 写入
 │   ├── trace_store.py             # react/subagent/llm trace 写入
 │   ├── a2a/                       # 轻量 A2A-like 委派协议
 │   ├── subagents/                 # SubAgentFactory / Runtime / policy / tools
-│   ├── react/                     # ReAct graph / nodes / state / registry / tools / prompts / types
+│   ├── react/                     # ReAct graph / nodes / model factory / tools / prompts / A2A SubAgent graph
 │   └── skill_runner.py            # 统一 subprocess 调用入口
 │
 ├── skills/                        # OpenClaw 兼容 Skill
@@ -85,13 +85,13 @@ copy .env.example .env
 # 编辑 .env，填入 WRITEAGENT_LLM_API_KEY / BASE_URL / MODEL
 ```
 
-支持任意 OpenAI 兼容端点（通义千问 DashScope、智谱 GLM、DeepSeek 等）。所有模型调用都通过 `agent/llm_gateway.py`，Main Agent 与 Sub-agent 调用都会写入 `llm_trace.jsonl`。Skill script 内禁止直接调用模型。
+支持任意具备 tool-calling 能力的 OpenAI 兼容端点（通义千问 DashScope、智谱 GLM、DeepSeek 等）。本地 Agent 通过 `agent/react/model_factory.py` 创建 LangChain ChatModel，并沿用 `agent/llm_gateway.py` 的配置与 trace 治理。Skill script 内禁止直接调用模型。
 无 Key 时设 `WRITEAGENT_MOCK_LLM=1` 可走 Gateway mock 离线跑通流程。
 
 ### 3. 运行案例（本地模式）
 
 ```powershell
-# 本地 ReAct：Main ReAct Agent + 动态 Sub-agent 委派
+# 本地 ReAct：Main Agent tool-calling + 动态 SubAgent graph 委派
 python -m agent run --case case/00-用户原始需求.md
 python -m agent run --request "请先生成一份关于生成式 AI 辅助论文写作的论文大纲"
 
@@ -99,9 +99,9 @@ python -m agent run --request "请先生成一份关于生成式 AI 辅助论文
 python -m agent inspect
 ```
 
-`python -m agent run` 运行结束后会打印每一步 action / observation 摘要，并写出：
+`python -m agent run` 运行结束后会打印每一步 tool call / observation 摘要，并写出：
 
-- `<workspace>/react_trace.json`：Main Agent 每一步 action / observation。
+- `<workspace>/react_trace.json`：Main Agent 每一步 tool call / observation。
 - `<workspace>/subagent_trace.jsonl`：每个动态 Sub-agent 的委派 spec、状态与结果。
 - `<workspace>/llm_trace.jsonl`：Main Agent 与 Sub-agent 的模型调用记录。
 

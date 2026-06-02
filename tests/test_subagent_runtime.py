@@ -31,7 +31,7 @@ def test_subagent_runtime_writes_intermediate_and_trace(tmp_path: Path) -> None:
         skill_context=["writing-requirement-analysis"],
         prompt_refs=["skills/writing-requirement-analysis/prompts/extract_writing_task.md"],
         output_schema="WritingTask",
-        allowed_tools=["inspect_state_subset", "read_skill_prompt", "read_skill_context"],
+        allowed_tools=["inspect_state", "read_state_keys"],
     )
 
     result = runtime.run(spec, state_path)
@@ -41,6 +41,31 @@ def test_subagent_runtime_writes_intermediate_and_trace(tmp_path: Path) -> None:
     assert state["intermediate"]["requirement"]["raw_writing_task"]["topic"]
     assert trace_store.subagent_trace_path.exists()
     assert trace_store.llm_trace_path.exists()
+
+
+def test_subagent_runtime_rejects_unauthorized_tool(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(json.dumps({"user_request": "x"}), encoding="utf-8")
+    runtime = SubAgentRuntime(
+        llm_gateway=LLMGateway(),
+        state_store=StateStore(),
+        trace_store=TraceStore(tmp_path),
+    )
+    spec = SubAgentSpec(
+        subagent_id="sa_001",
+        parent_agent_id="main",
+        role="writer",
+        task="Run a skill.",
+        input_keys=["user_request"],
+        output_key="intermediate.x",
+        output_schema={"type": "object"},
+        allowed_tools=["run_skill"],
+    )
+
+    result = runtime.run(spec, state_path)
+
+    assert result.status == "failed"
+    assert any(error["detail"].get("tool") == "run_skill" for error in result.errors)
 
 
 def test_subagent_runtime_rejects_unauthorized_write(tmp_path: Path) -> None:

@@ -8,11 +8,11 @@ flowchart TB
     entry -->|本地| cli[python -m agent run]
     entry -->|平台| oc[OpenClaw ReAct 大脑]
 
-    subgraph local [本地模式 · ReAct 调度]
+    subgraph local [本地模式 · LangChain ReAct 调度]
         cli --> reactGraph[ReAct StateGraph]
-        reactGraph --> mainAgent[Main ReAct Agent]
-        mainAgent -->|delegate_to_subagent| subAgent[Dynamic Sub-agent]
-        mainAgent -->|run_skill| skillCall[Skill subprocess]
+        reactGraph --> mainAgent[Main Agent bind_tools]
+        mainAgent -->|AIMessage.tool_calls: delegate_to_subagent| subAgent[SubAgent ReAct Graph]
+        mainAgent -->|AIMessage.tool_calls: run_skill| skillCall[Skill subprocess]
         subAgent --> gateway[LLM Gateway]
         subAgent --> stateJson[(state.json)]
         skillCall --> stateJson
@@ -38,16 +38,16 @@ flowchart TB
     skills --> outputs[(state.json + outputs/)]
 ```
 
-本地运行只保留 ReAct 调度：`agent/react_runner.py` 构建运行上下文，
-`agent/react/graph.py` 与 `agent/react/nodes.py` 负责决策循环和工具调用。
-所有模型调用集中在 `agent/llm_gateway.py`；Skill script 不直接调用 LLM。
+本地运行使用 LangChain-native ReAct 调度：`agent/react_runner.py` 构建运行上下文，
+`agent/react/graph.py` 与 `agent/react/nodes.py` 负责 `ChatModel.bind_tools(...)` 循环和工具调用。
+模型配置沿用 `agent/llm_gateway.py`，实际 ChatModel 创建集中在 `agent/react/model_factory.py`；Skill script 不直接调用 LLM。
 
 核心职责边界：
 
 - Main Agent plans：`agent/react_runner.py` 与 `agent/react/*` 负责规划、委派、工具调用和终止判断。
-- Sub-agents reason：`agent/subagents/runtime.py` 根据 `SubAgentSpec` 动态执行临时 Sub-agent，不写固定专家类。
+- Sub-agents reason：`agent/subagents/runtime.py` 根据 `SubAgentSpec` 委托 `agent/react/subagent_graph.py` 动态执行受限 SubAgent ReAct graph。
 - Skills validate and execute：`skills/*/scripts/run.py` 执行确定性校验、增强、渲染和正式字段写入。
-- LLM Gateway governs：`agent/llm_gateway.py` 统一 chat、structured JSON、repair、retry、mock 与 trace。
+- LLM Gateway governs：`agent/llm_gateway.py` 统一配置、mock 与 trace；Agent 决策主路径使用 LangChain ChatModel tool-calling。
 - State coordinates：`state.json` 协调 Main Agent、Sub-agent 与 Skill。
 - Trace makes the system observable：`react_trace.json`、`subagent_trace.jsonl`、`llm_trace.jsonl` 记录全链路。
 
@@ -55,12 +55,13 @@ flowchart TB
 
 ### 1. 状态通道（[agent/react/state.py](../agent/react/state.py)）
 
-`ReactGraphState` 是本地 ReAct 循环的 LangGraph channel，包含用户请求、工作区路径、Skill Registry 文本、已执行步骤、运行状态和最终回答。
+`MainAgentState` 是本地 ReAct 循环的 LangGraph channel，包含消息历史、用户请求、工作区路径、Skill Registry 文本、已执行 tool call、运行状态和最终回答。
 
 主要字段：
 
 ```python
-class ReactGraphState(TypedDict, total=False):
+class MainAgentState(TypedDict, total=False):
+    messages: Annotated[list[Any], add_messages]
     user_request: str
     workspace_root: str
     state_path: str
@@ -77,24 +78,21 @@ class ReactGraphState(TypedDict, total=False):
 
 | 节点名 | 说明 |
 | --- | --- |
-| `decide` | 调用 Main Agent，要求输出严格 JSON action |
-| `act` | 执行 action：检查状态、读取 Skill、委派 Sub-agent、运行 Skill 或结束 |
-| `repair` | 当 action JSON 无法解析时，尝试一次修复 |
+| `main_agent` | 调用 `model.bind_tools(main_tools)` 后的 ChatModel，接收 `AIMessage.tool_calls` 或最终自然语言回答 |
+| `main_tools` | 执行 `inspect_state / run_skill / delegate_to_subagent / ask_user`，把 JSON 字符串结果作为 `ToolMessage` 返回 |
 
-### 3. Action 合约
+### 3. Tool 合约
 
-Main Agent 可输出的 action 包括：
+Main Agent 可调用的 LangChain tools 包括：
 
-| action | 说明 |
+| tool | 说明 |
 | --- | --- |
 | `inspect_state` | 摘要查看当前 `state.json` |
-| `read_skill` | 读取 Skill 元数据或说明 |
 | `delegate_to_subagent` | 为认知型任务生成结构化中间材料 |
 | `run_skill` | 通过 `SkillRunner` 调用 `skills/<name>/scripts/run.py` |
 | `ask_user` | 信息不足时向用户提问 |
-| `finish` | 结束任务并返回回答 |
 
-`max_steps` 防止无限循环；运行结束后写出 `react_trace.json`。
+没有 `finish` 工具。任务完成时，模型返回无 tool calls 的最终 `AIMessage`。`max_steps` 防止无限循环；运行结束后写出 `react_trace.json`。
 
 ## 三、SkillRunner 子进程边界
 
@@ -146,11 +144,11 @@ import 路径。Skill 中不允许 import LLM Gateway 或 `_shared.llm`。
                       --references "case/references" `
                       --workspace ".writeagent"
 ┌────────────── writeAgent ──────────────┐
-│ Run started  mode=react                │
+│ Run started  mode=langchain-react      │
 │ workspace = .../.writeagent            │
 └────────────────────────────────────────┘
 ┌──────────── ReAct run summary ─────────┐
-│ [0] delegate_to_subagent status=ok     │
+│ [1] delegate_to_subagent status=ok     │
 │ [1] run_skill status=ok                │
 │ Final status: finished                 │
 │ State path: .../.writeagent/state.json │
@@ -164,7 +162,7 @@ import 路径。Skill 中不允许 import LLM Gateway 或 `_shared.llm`。
 
 | 本地 ReAct | OpenClaw ReAct |
 | --- | --- |
-| `agent/react/graph.py` 运行决策循环 | OpenClaw 自带 ReAct 大脑运行决策循环 |
+| `agent/react/graph.py` 运行 LangChain tool-calling 决策循环 | OpenClaw 自带 ReAct 大脑运行决策循环 |
 | `agent/react/nodes.py` 提供本地工具 | OpenClaw 提供平台工具 |
 | `SkillRunner` subprocess 调 `python run.py` | OpenClaw 直接 bash 调 `python run.py` |
 | `react_trace.json` / `subagent_trace.jsonl` / `llm_trace.jsonl` | OpenClaw 自己的会话历史与日志 |

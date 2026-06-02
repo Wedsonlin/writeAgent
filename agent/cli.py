@@ -2,7 +2,7 @@
 
 Sub-commands
 ------------
-- ``run``     Kick off the local ReAct runner from a request file/string.
+- ``run``     Kick off the local LangChain ReAct runner from a request file/string.
 - ``inspect`` Pretty-print the current ``state.json``.
 """
 
@@ -30,7 +30,7 @@ from .skill_runner import SKILLS_DIR, SkillRunner
 from .state_store import write_state
 
 
-app = typer.Typer(help="writeAgent — 本地 ReAct 论文写作 Agent CLI")
+app = typer.Typer(help="writeAgent — 本地 LangChain ReAct 论文写作 Agent CLI")
 console = Console()
 
 
@@ -89,7 +89,7 @@ def run(
     case_id, user_request = _read_request(case, request)
     console.print(
         Panel.fit(
-            f"[bold green]Run started[/]  mode=react  case_id={case_id}\n"
+            f"[bold green]Run started[/]  mode=langchain-react  case_id={case_id}\n"
             f"workspace = {ws}",
             title="writeAgent",
         )

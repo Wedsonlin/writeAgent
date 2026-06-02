@@ -4,185 +4,147 @@ import json
 from pathlib import Path
 from typing import Any
 
+from langchain_core.messages import AIMessage
+
 from agent.llm_gateway import LLMGateway
 from agent.react.skill_registry import SkillRegistry
 from agent.react_runner import ReactRunner
 from agent.skill_runner import SkillResult
 
 
-OUTPUT_BY_SKILL = {
-    "writing-requirement-analysis": "writing_task",
-    "literature-review": "literature_report",
-    "paper-outline": "outline",
-    "paper-content-generation": "draft",
-    "academic-formatting": "formatted_draft",
-    "polish-and-plagiarism": "polished_draft",
-}
-
-
-def test_react_runner_full_writing_uses_multiple_skills(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, OUTPUT_BY_SKILL.keys())
-    result = _run(
-        tmp_path,
-        registry,
-        "请根据以下研究方向生成一篇完整论文初稿：XXX，要求包含文献综述、大纲、正文、格式化和润色。",
+def test_react_runner_calls_inspect_state_through_bound_tool(tmp_path: Path) -> None:
+    model = SequenceChatModel(
+        [
+            AIMessage(content="", tool_calls=[{"name": "inspect_state", "args": {}, "id": "call_inspect"}]),
+            AIMessage(content="checked"),
+        ]
     )
+    result = _run(tmp_path, _registry_with_skills(tmp_path, []), "先检查状态。", model=model)
 
-    called = _called_skills(result.steps)
-    delegated = _delegated_outputs(result.steps)
     assert result.status == "finished"
-    assert called == list(OUTPUT_BY_SKILL.keys())
-    assert "intermediate.requirement.raw_writing_task" in delegated
-    assert "intermediate.literature_review.paper_claims" in delegated
-    assert "intermediate.literature_review.synthesis" in delegated
-    state = json.loads(result.state_path.read_text(encoding="utf-8"))
-    assert "polished_draft" in state
-    assert result.trace_path.exists()
-    assert (result.state_path.parent / "subagent_trace.jsonl").exists()
-    assert (result.state_path.parent / "llm_trace.jsonl").exists()
+    assert result.answer == "checked"
+    assert model.bound_tool_names == ["inspect_state", "run_skill", "delegate_to_subagent", "ask_user"]
+    assert [step["action"] for step in result.steps] == ["inspect_state"]
 
 
-def test_react_runner_outline_request_skips_format_and_polish(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, OUTPUT_BY_SKILL.keys())
-    result = _run(tmp_path, registry, "我只需要一份关于XXX的论文详细大纲。")
-
-    called = _called_skills(result.steps)
-    assert result.status == "finished"
-    assert called == [
-        "writing-requirement-analysis",
-        "paper-outline",
-    ]
-    assert _delegated_outputs(result.steps) == [
-        "intermediate.requirement.raw_writing_task",
-        "intermediate.outline.raw_outline",
-    ]
-    assert "literature-review" not in called
-    assert "academic-formatting" not in called
-    assert "polish-and-plagiarism" not in called
-
-
-def test_react_runner_polish_without_draft_asks_user(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, OUTPUT_BY_SKILL.keys())
-    result = _run(tmp_path, registry, "我已经有论文初稿，只需要语言润色和查重优化建议。")
-
-    assert result.status == "ask_user"
-    assert "初稿" in result.answer
-    assert _called_skills(result.steps) == []
-    assert _delegated_outputs(result.steps) == []
-
-
-def test_react_runner_vague_request_asks_user(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, OUTPUT_BY_SKILL.keys())
-    result = _run(tmp_path, registry, "帮我写一篇论文。")
-
-    assert result.status == "ask_user"
-    assert _called_skills(result.steps) == []
-    assert _delegated_outputs(result.steps) == ["intermediate.requirement.raw_writing_task"]
-
-
-def test_react_runner_skill_failure_surfaces_observation(tmp_path: Path) -> None:
+def test_react_runner_calls_run_skill_tool(tmp_path: Path) -> None:
     registry = _registry_with_skills(tmp_path, ["writing-requirement-analysis"])
     result = _run(
         tmp_path,
         registry,
-        "请写一篇关于XXX的论文。",
-        skill_runner=FakeSkillRunner(fail_on={"writing-requirement-analysis"}),
+        "分析写作需求。",
+        model=SequenceChatModel(
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "run_skill",
+                            "args": {"skill_name": "writing-requirement-analysis", "reason": "extract requirements"},
+                            "id": "call_skill",
+                        }
+                    ],
+                ),
+                AIMessage(content="requirements done"),
+            ]
+        ),
+    )
+
+    state = json.loads(result.state_path.read_text(encoding="utf-8"))
+    assert result.status == "finished"
+    assert state["writing_task"]["produced_by"] == "writing-requirement-analysis"
+    assert result.steps[0]["observation"]["status"] == "ok"
+
+
+def test_react_runner_delegates_to_subagent_graph(tmp_path: Path) -> None:
+    result = _run(
+        tmp_path,
+        _registry_with_skills(tmp_path, []),
+        "请先派生需求分析子代理。",
+        model=SequenceChatModel(
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "delegate_to_subagent",
+                            "args": {
+                                "role": "requirement analyst",
+                                "task": "Extract a writing task.",
+                                "input_keys": ["user_request"],
+                                "output_key": "intermediate.requirement.raw_writing_task",
+                                "output_schema": {"type": "object"},
+                            },
+                            "id": "call_delegate",
+                        }
+                    ],
+                ),
+                AIMessage(content="delegated"),
+            ]
+        ),
+    )
+
+    state = json.loads(result.state_path.read_text(encoding="utf-8"))
+    assert result.status == "finished"
+    assert result.steps[0]["action"] == "delegate_to_subagent"
+    assert result.steps[0]["observation"]["status"] == "completed"
+    assert state["intermediate"]["requirement"]["raw_writing_task"]
+
+
+def test_react_runner_ask_user_tool_ends_run(tmp_path: Path) -> None:
+    result = _run(
+        tmp_path,
+        _registry_with_skills(tmp_path, []),
+        "信息不足。",
+        model=SequenceChatModel(
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "ask_user",
+                            "args": {"question": "请补充论文主题。", "reason": "missing topic"},
+                            "id": "call_ask",
+                        }
+                    ],
+                )
+            ]
+        ),
     )
 
     assert result.status == "ask_user"
-    assert result.steps[0]["action"] == "delegate_to_subagent"
-    assert result.steps[1]["observation"]["status"] == "error"
-    assert "simulated failure" in result.steps[1]["observation"]["stderr_tail"]
+    assert "论文主题" in result.answer
 
 
-def test_react_runner_repairs_invalid_json_once(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, [])
-    result = _run(
-        tmp_path,
-        registry,
-        "只检查状态。",
-        llm=SequenceLLM(
-            [
-                "not json",
-                '{"thought":"repaired","action":"finish","action_input":{"answer":"ok"}}',
-            ]
-        ),
-    )
+def test_react_runner_final_answer_does_not_require_finish_action(tmp_path: Path) -> None:
+    model = SequenceChatModel([AIMessage(content="final answer")])
+    result = _run(tmp_path, _registry_with_skills(tmp_path, []), "直接回答。", model=model)
 
     assert result.status == "finished"
-    assert result.answer == "ok"
+    assert result.answer == "final answer"
+    assert result.steps == []
+    assert "finish" not in model.bound_tool_names
+    assert not (Path(__file__).resolve().parents[1] / "agent" / "react" / "actions.py").exists()
 
 
-def test_react_graph_routes_inspect_back_to_decide(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, [])
-    result = _run(
-        tmp_path,
-        registry,
-        "先检查状态，然后结束。",
-        llm=SequenceLLM(
-            [
-                '{"thought":"look","action":"inspect_state","action_input":{}}',
-                '{"thought":"done","action":"finish","action_input":{"answer":"checked"}}',
-            ]
-        ),
-    )
-
-    assert result.status == "finished"
-    assert [step["action"] for step in result.steps] == ["inspect_state", "finish"]
-    trace = json.loads(result.trace_path.read_text(encoding="utf-8"))
-    assert trace["status"] == "finished"
-
-
-def test_react_runner_stops_at_max_steps(tmp_path: Path) -> None:
-    registry = _registry_with_skills(tmp_path, [])
-    result = _run(
-        tmp_path,
-        registry,
-        "只检查状态。",
-        llm=SequenceLLM(
-            [
-                '{"thought":"look","action":"inspect_state","action_input":{}}',
-                '{"thought":"look again","action":"inspect_state","action_input":{}}',
-            ]
-        ),
-        max_steps=2,
-    )
-
-    assert result.status == "max_steps_exceeded"
-    assert len(result.steps) == 2
-
-
-class EchoMockLLM:
-    def chat(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
-        return str(kwargs["mock_response"])
-
-
-class SequenceLLM:
-    def __init__(self, responses: list[str]) -> None:
+class SequenceChatModel:
+    def __init__(self, responses: list[AIMessage]) -> None:
         self.responses = responses
+        self.bound_tool_names: list[str] = []
 
-    def chat(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
+    def bind_tools(self, tools: list[Any]) -> "SequenceChatModel":
+        self.bound_tool_names = [str(getattr(tool, "name", "")) for tool in tools]
+        return self
+
+    def invoke(self, messages: list[Any], config: dict[str, Any] | None = None) -> AIMessage:
         return self.responses.pop(0)
 
 
 class FakeSkillRunner:
-    def __init__(self, fail_on: set[str] | None = None) -> None:
-        self.fail_on = fail_on or set()
-
     def run(self, skill_name: str, state_path: Path) -> SkillResult:
         state_path = Path(state_path)
         state = json.loads(state_path.read_text(encoding="utf-8"))
-        if skill_name in self.fail_on:
-            return SkillResult(
-                skill=skill_name,
-                status="error",
-                duration_ms=5,
-                stdout="",
-                stderr="simulated failure",
-                state_after={},
-            )
-        output_key = OUTPUT_BY_SKILL[skill_name]
-        state[output_key] = {"produced_by": skill_name}
+        state["writing_task"] = {"produced_by": skill_name}
         state["stage"] = f"{skill_name}_done"
         state_path.write_text(json.dumps(state), encoding="utf-8")
         return SkillResult(
@@ -195,42 +157,19 @@ class FakeSkillRunner:
         )
 
 
-def _run(
-    tmp_path: Path,
-    registry: SkillRegistry,
-    request: str,
-    *,
-    llm: Any | None = None,
-    skill_runner: Any | None = None,
-    max_steps: int = 24,
-):
+def _run(tmp_path: Path, registry: SkillRegistry, request: str, *, model: Any):
     workspace = tmp_path / "workspace"
     return ReactRunner(
-        llm_gateway=LLMGateway(transport=llm or EchoMockLLM()),
+        llm_gateway=LLMGateway(),
         skill_registry=registry,
-        skill_runner=skill_runner or FakeSkillRunner(),
-        max_steps=max_steps,
+        skill_runner=FakeSkillRunner(),
+        max_steps=8,
+        model=model,
     ).run(
         user_request=request,
         workspace_root=workspace,
         state_path=workspace / "state.json",
     )
-
-
-def _called_skills(steps: list[dict[str, Any]]) -> list[str]:
-    return [
-        step.get("action_input", {}).get("skill_name")
-        for step in steps
-        if step.get("action") == "run_skill"
-    ]
-
-
-def _delegated_outputs(steps: list[dict[str, Any]]) -> list[str]:
-    return [
-        step.get("action_input", {}).get("output_key")
-        for step in steps
-        if step.get("action") == "delegate_to_subagent"
-    ]
 
 
 def _registry_with_skills(tmp_path: Path, skills: Any) -> SkillRegistry:

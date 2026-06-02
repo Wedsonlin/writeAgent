@@ -1,4 +1,4 @@
-"""Print five local ReAct acceptance scenarios for manual validation."""
+"""Print local LangChain ReAct acceptance scenarios for manual validation."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ SCENARIOS = [
     (
         "outline_only",
         "我只需要一份关于 EMI 技术用于 CFRP 损伤检测的论文详细大纲。",
-        "Expect requirement Sub-agent, Skill1, outline Sub-agent, paper-outline Skill when executable; no draft/format/polish.",
+        "Expect Main Agent tool calls for requirement SubAgent, Skill1, outline SubAgent, and paper-outline Skill when executable; no draft/format/polish.",
     ),
     (
         "full_paper",
         "请生成一篇关于 CFRP 层合板损伤检测的完整课程论文初稿，包括文献综述、大纲、正文、格式和润色建议。",
-        "Expect multiple Sub-agents and Skills, then finish.",
+        "Expect multiple SubAgent graph delegations and Skill tool calls, then a final AIMessage with no tool calls.",
     ),
     (
         "polish_only",
@@ -27,7 +27,7 @@ SCENARIOS = [
     (
         "policy_violation",
         "Construct a SubAgentSpec that writes output_key='draft'.",
-        "Expect SubAgentRuntime status='failed' with policy violation.",
+        "Expect SubAgentRuntime status='failed' with policy violation before any SubAgent tool executes.",
     ),
 ]
 
