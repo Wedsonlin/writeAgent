@@ -1,6 +1,6 @@
 ---
 name: literature-review
-description: 文献梳理与引用整合 Skill。当用户提到"文献综述/参考文献整理/引用规范/literature review/research gap"或 writing_task 已存在但 literature_report 尚未生成时使用。本 Skill 不直接调用模型；应先由文献分析/综合 Sub-agent 写入 state.intermediate.literature_review，再运行 scripts/run.py 解析文献、格式化引用、组装报告并写入 state.literature_report。
+description: 梳理参考文献并生成结构化文献综述报告。Use when the user mentions 文献综述, 研究现状, research gap, literature review, references, citation formatting, or needs evidence support for a writing task.
 user-invocable: true
 disable-model-invocation: true
 homepage: https://example.org/writeagent
@@ -9,85 +9,64 @@ metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 
 # 文献梳理与引用整合
 
-把用户提供的参考文献（BibTeX / PDF / 纯文本）转化为一份结构化的**文献梳理报告**（`literature_report`），为 Skill 3 大纲与 Skill 4 正文生成提供文献支撑。
-
-本 Skill 遵循 Agent-native 分工：
-
-- Main Agent 判断是否需要文献梳理。
-- Literature analysis Sub-agent 生成 `paper_claims`。
-- Literature synthesis Sub-agent 生成 `synthesis`。
-- `scripts/run.py` 执行文献采集、去重、引用格式化、报告组装、schema validation 和落盘。
-- Skill script 不直接调用 LLM。
+把 BibTeX、PDF 或纯文本参考资料转化为结构化**文献梳理报告**（`literature_report`），为大纲和正文写作提供研究脉络、共识、争议、缺口与规范参考文献。
 
 ## 何时使用
 
 满足以下任一条件即触发：
 
-- `state.writing_task` 已生成；`state.literature_report` 仍为空。
 - 用户提到"梳理文献 / 研究现状 / 文献综述 / literature review / 研究缺口 / 参考文献规范"。
 - 用户提供了新的 `.bib` 文件或 PDF 目录希望加入综述。
+- 写作任务已有主题和核心论点，但缺少文献证据支撑。
+- 需要把零散参考文献整理为可复用的综述材料。
 
-## Agent 使用流程
+## 输入
 
-### 1. 派生文献观点提取 Sub-agent
+- `writing_task`：主题、研究范围、核心论点和参考文献线索。
+- BibTeX 文件、PDF 目录或纯文本文献笔记。
+- 可选人工摘要：每篇文献的核心观点、方法、证据强度、局限。
 
-生成：
+## 工作流
 
-```jsonc
-{
-  "intermediate": {
-    "literature_review": {
-      "paper_claims": [
-        {
-          "id": "paper-id",
-          "key_claims": ["..."],
-          "evidence_strength": "moderate",
-          "methods": ["..."],
-          "limitations": ["..."]
-        }
-      ]
-    }
-  }
-}
+Use this checklist:
+
+```text
+Literature review:
+- [ ] Collect references from BibTeX, PDF, text notes, or `writing_task.references_seed`.
+- [ ] Normalize paper metadata: title, authors, year, venue, abstract, DOI/URL, source kind.
+- [ ] Extract each paper's key claims, methods, evidence strength, and limitations.
+- [ ] Group papers into research clusters and summarize the field timeline.
+- [ ] Identify consensus, controversies, and research gaps relevant to the writing task.
+- [ ] Align useful papers to `writing_task.core_arguments`.
+- [ ] Render the literature report and bibliography for human review.
 ```
 
-推荐 `SubAgentSpec`：
+## 结构化内容要求
 
-```json
-{
-  "role": "literature analysis specialist",
-  "task": "Extract key claims, methods, evidence strength, and limitations from collected reference papers.",
-  "input_keys": ["writing_task", "references.raw_papers"],
-  "output_key": "intermediate.literature_review.paper_claims",
-  "skill_context": ["literature-review"],
-  "prompt_refs": ["skills/literature-review/prompts/extract_claims.md"],
-  "output_schema": "PaperClaimsExtraction",
-  "allowed_tools": ["inspect_state_subset", "read_skill_prompt", "read_skill_context"]
-}
-```
+### Paper Claims
 
-### 2. 派生文献综合 Sub-agent
+每篇文献应包含：
 
-生成：
+- `id` 或 `paper_id`：必须能与文献记录对应。
+- `key_claims`：文献的主要结论，不要写成泛泛摘要。
+- `evidence_strength`：`strong` / `moderate` / `weak` / `anecdotal`。
+- `methods`：研究方法、数据来源或系统实现方式。
+- `limitations`：作者承认的限制或可推断的证据边界。
 
-```jsonc
-{
-  "intermediate": {
-    "literature_review": {
-      "synthesis": {
-        "clusters": [],
-        "timeline_summary": "...",
-        "consensus": [],
-        "controversies": [],
-        "research_gaps": [],
-        "alignments": []
-      }
-    }
-  }
-}
-```
+### Synthesis
 
-### 3. 运行确定性入口
+综合结果应包含：
+
+- `clusters`：研究主题簇，每个簇包含名称、摘要和代表文献。
+- `timeline_summary`：领域演进主线，避免逐篇罗列。
+- `consensus`：多数文献支持的共同观点。
+- `controversies`：相互冲突的观点、方法或证据。
+- `research_gaps`：可服务于当前论文创新点的缺口。
+- `alignments`：文献与 `writing_task.core_arguments` 的对应关系。
+
+## 确定性辅助脚本
+
+本仓库提供脚本用于采集文献、去重、格式化引用、组装报告和渲染 Markdown：
 
 ```bash
 python {baseDir}/scripts/run.py --state {workspace}/state.json \
@@ -97,48 +76,44 @@ python {baseDir}/scripts/run.py --state {workspace}/state.json \
 
 参数：
 
-- `--state` **必填**。共享 `state.json` 路径。
+- `--state` 必填。共享运行上下文路径。
 - `--refs` 可重复。`.bib` 文件路径。
 - `--pdf-dir` 可选。包含 PDF 文献的目录（递归读取所有 .pdf）。
 - `--text-file` 可重复。纯文本笔记文件（每段一条文献，或自由记述）。
-- `--citation-style` 可选。`GB/T 7714` | `APA` | `IEEE` | `ACM` | `Chicago`，默认取 `writing_task.target_journal.style_profile.citation_style` 或 `GB/T 7714`。
+- `--citation-style` 可选。记录首选引用风格；当前报告固定渲染 GB/T 7714-2015 与 APA 7 两套参考文献。
 
-若三个输入参数都未给定，Skill 会回退到 `state.writing_task.references_seed` 列出的路径。
+若三个文献输入参数都未给定，脚本会回退到 `writing_task.references_seed` 列出的路径。
 
-调用前置：
-
-- `state.writing_task` 必须存在。
-- `state.intermediate.literature_review.paper_claims` 必须存在。
-- `state.intermediate.literature_review.synthesis` 必须存在。
-
-## 处理流程
-
-1. **采集**：用 `parsers/bibtex.py`、`parsers/pdf.py` 解析三类输入，得到统一的 `RawPaper` 列表（含 title、authors、year、venue、abstract、source_kind 等）。
-2. **合并 claims**：读取 `state.intermediate.literature_review.paper_claims`，把 `key_claims` 与 `evidence_strength` 合并进文献记录。
-3. **合并 synthesis**：读取 `state.intermediate.literature_review.synthesis`，生成研究脉络、共识、争议、研究缺口与 `alignment_to_core`。
-4. **引用格式化**：`citation_formatter.py` 同时生成 GB/T 7714-2015 与 APA 7 两套规范引用。
-5. **校验**：用 `_shared.schemas.LiteratureReport` 做 pydantic 验证。
-6. **持久化**：`literature_report` 写入 `state.json`，Markdown 报告写入 `outputs/02-文献梳理报告.md`。
+不要直接组合调用 `scripts/parsers/*.py` 或 `scripts/citation_formatter.py`；优先使用 `scripts/run.py`。
 
 ## 输出
 
-- `state.literature_report`（符合 `schemas/literature_report.schema.json`）。
-- `outputs/02-文献梳理报告.md` —— 人类可读 Markdown。
-- stdout —— 简短摘要（含文献条数、聚类数、缺口数）。
+- `literature_report` JSON（符合 `schemas/literature_report.schema.json`）。
+- `outputs/02-文献梳理报告.md`：人类可读 Markdown 文献报告。
+- 规范参考文献：当前固定包含 GB/T 7714-2015 与 APA 7。
 
-## 异常情况
+## 异常与降级
 
-- **BibTeX 解析失败**：跳过该条目并记入 `history.message`，不让单篇错乱破坏全局。
-- **PDF 无文本（纯扫描件）**：跳过 abstract，仅保留 filename → title 的启发式标题，并标记 `evidence_strength=anecdotal`。
-- **缺少 paper_claims intermediate**：stderr 输出明确错误，exit code 1。Main Agent 应先派生 literature analysis Sub-agent。
-- **缺少 synthesis intermediate**：stderr 输出明确错误，exit code 1。Main Agent 应先派生 literature synthesis Sub-agent。
-- **无任何输入文献**：Skill 仍然产出 report，但 `papers=[]` 且 `research_landscape.clusters=[]`，并在 stderr 提示。
+- BibTeX 单条解析失败：跳过该条并记录 warning，不让单篇错误破坏全局。
+- PDF 无文本或纯扫描件：保留可推断标题，证据强度按低可信处理。
+- 无任何输入文献：仍可生成空报告，但必须提示用户补充文献。
+- schema validation warning：先修正字段结构，再继续下游写作。
 
-## 过程知识
+## 验证
 
-- `prompts/extract_claims.md`：供 Sub-agent 提取文献观点。
-- `prompts/synthesize.md`：供 Sub-agent 做研究脉络综合。
-- `references/`：文献处理说明与示例素材。
-- `scripts/parsers/*.py`：确定性文献解析 helper。
-- `scripts/citation_formatter.py`：确定性引用格式化 helper。
-- `scripts/*.py` 为内部 helper，不应由 Main Agent 自由组合调用。
+完成后检查：
+
+- 文献条目数量符合用户输入或 `references_seed`。
+- 每篇关键文献至少有 1 条 `key_claims`，且证据强度不是无依据填充。
+- `research_gaps` 能对应当前论文主题或核心论点。
+- `controversies` 写清冲突双方，而不是只列关键词。
+- Markdown 报告包含研究脉络、共识、争议、缺口、文献明细和参考文献。
+
+## 参考资料
+
+- [prompts/extract_claims.md](prompts/extract_claims.md)：文献观点抽取提示。
+- [prompts/synthesize.md](prompts/synthesize.md)：研究脉络综合提示。
+- [references/review-template.md](references/review-template.md)：报告结构模板。
+- [references/gb7714-rules.md](references/gb7714-rules.md)：GB/T 7714-2015 规则。
+- [references/apa-rules.md](references/apa-rules.md)：APA 7 规则。
+- [assets/example_output.md](assets/example_output.md)：文献报告输出示例。

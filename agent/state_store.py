@@ -1,4 +1,4 @@
-"""Shared state.json helpers for workflow, ReAct, and Sub-agents."""
+"""Shared state.json helpers for ReAct, Sub-agents, and Skill scripts."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://writeagent.local/schemas/state.schema.json",
   "title": "WriteAgentState",
-  "description": "跨 6 个 Skill 共享的工作区状态。LangGraph 模式下作为 StateGraph 的 channel；OpenClaw 模式下落盘为 .writeagent/state.json。",
+  "description": "跨 6 个 Skill 共享的工作区状态。本地 ReAct 与 OpenClaw 模式均落盘为 .writeagent/state.json。",
   "type": "object",
   "required": ["case_id", "stage", "history"],
   "properties": {

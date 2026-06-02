@@ -2,8 +2,7 @@
 
 Sub-commands
 ------------
-- ``run``     Kick off workflow or local ReAct mode from a request file/string.
-- ``resume``  Continue from the latest workflow checkpoint of an existing thread.
+- ``run``     Kick off the local ReAct runner from a request file/string.
 - ``inspect`` Pretty-print the current ``state.json``.
 """
 
@@ -11,7 +10,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -29,21 +27,15 @@ from rich.syntax import Syntax
 from .react.skill_registry import SkillRegistry
 from .react_runner import ReactRunner
 from .skill_runner import SKILLS_DIR, SkillRunner
-from .workflow import build_graph, export_state_json, initial_state, make_checkpointer
-from .workflow_runner import WorkflowRunner
+from .state_store import write_state
 
 
-app = typer.Typer(help="writeAgent — workflow / ReAct 双模式论文写作 Agent CLI")
+app = typer.Typer(help="writeAgent — 本地 ReAct 论文写作 Agent CLI")
 console = Console()
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKSPACE = REPO_ROOT / ".writeagent"
-
-
-class RunMode(str, Enum):
-    workflow = "workflow"
-    react = "react"
 
 
 def _ensure_workspace(workspace: Optional[Path]) -> Path:
@@ -86,57 +78,31 @@ def run(
     references: Optional[Path] = typer.Option(
         None, "--references", help="参考文献目录（含 .bib / .pdf）。"
     ),
-    thread_id: Optional[str] = typer.Option(
-        None, "--thread-id", help="LangGraph 线程 id；默认自动生成 case-based id。"
-    ),
-    mode: RunMode = typer.Option(
-        RunMode.workflow,
-        "--mode",
-        help="运行模式：workflow=固定 LangGraph 流程；react=本地 ReAct Skill 调度。",
-    ),
     max_steps: int = typer.Option(
         24,
         "--max-steps",
-        help="react 模式最大决策步数。",
-    ),
-    only_first_two: bool = typer.Option(
-        True,
-        "--only-first-two/--full-pipeline",
-        help="阶段一仅跑 Skill 1→2（Skill 3-6 未实现）。",
+        help="最大 ReAct 决策步数。",
     ),
 ) -> None:
     """Kick off a fresh writeAgent pipeline."""
     ws = _ensure_workspace(workspace)
     case_id, user_request = _read_request(case, request)
-    thread = thread_id or case_id
     console.print(
         Panel.fit(
-            f"[bold green]Run started[/]  mode={mode.value}  case_id={case_id}  thread={thread}\n"
+            f"[bold green]Run started[/]  mode=react  case_id={case_id}\n"
             f"workspace = {ws}",
             title="writeAgent",
         )
     )
 
-    if mode == RunMode.workflow:
-        result = WorkflowRunner().run(
-            case_id=case_id,
-            user_request=user_request,
-            workspace_root=ws,
-            references_dir=str(references) if references else None,
-            thread_id=thread,
-            include_optional_skills=not only_first_two,
-        )
-        _print_summary(result.final_state)
-        return
-
-    init = initial_state(
+    init = _initial_state(
         case_id=case_id,
         user_request=user_request,
         workspace_root=str(ws),
         state_path=str(ws / "state.json"),
         references_dir=str(references) if references else None,
     )
-    export_state_json(ws, dict(init))
+    write_state(ws / "state.json", init)
     registry = SkillRegistry.from_skills_dir(SKILLS_DIR)
     react_result = ReactRunner(
         skill_registry=registry,
@@ -150,33 +116,6 @@ def run(
     _print_react_summary(react_result)
     if react_result.status == "error":
         raise typer.Exit(code=1)
-
-
-# --------------------------------------------------------------------------- #
-# resume
-# --------------------------------------------------------------------------- #
-
-
-@app.command()
-def resume(
-    workspace: Optional[Path] = typer.Option(
-        None, "--workspace", "-w", help="工作目录（默认 ./.writeagent）。"
-    ),
-    thread_id: str = typer.Argument(..., help="之前 run 时返回的线程 id。"),
-) -> None:
-    """Resume a previously checkpointed thread (e.g. after a crash or user clarification)."""
-    ws = _ensure_workspace(workspace)
-    checkpointer = make_checkpointer(ws)
-    if checkpointer is None:
-        raise typer.BadParameter(
-            "No checkpointer available; install langgraph-checkpoint-sqlite."
-        )
-    graph = build_graph(checkpointer=checkpointer)
-    final_state = graph.invoke(
-        None, config={"configurable": {"thread_id": thread_id}}
-    )
-    export_state_json(ws, final_state)
-    _print_summary(final_state)
 
 
 # --------------------------------------------------------------------------- #
@@ -211,15 +150,25 @@ def inspect(
 # --------------------------------------------------------------------------- #
 
 
-def _print_summary(state: dict) -> None:
-    history = state.get("history", [])
-    table_lines = [f"stage = {state.get('stage', '?')}", f"history ({len(history)} steps):"]
-    for h in history:
-        table_lines.append(
-            f"  - {h.get('skill', '?'):28} {h.get('status', '?'):6} "
-            f"{h.get('duration_ms', 0)}ms  {h.get('message', '')}"
-        )
-    console.print(Panel("\n".join(table_lines), title="Run summary"))
+def _initial_state(
+    *,
+    case_id: str,
+    user_request: str,
+    workspace_root: str,
+    state_path: str,
+    references_dir: str | None = None,
+) -> dict:
+    state = {
+        "case_id": case_id,
+        "user_request": user_request,
+        "stage": "init",
+        "history": [],
+        "workspace_root": workspace_root,
+        "state_path": state_path,
+    }
+    if references_dir:
+        state["references_dir"] = references_dir
+    return state
 
 
 def _print_react_summary(result) -> None:

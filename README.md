@@ -1,12 +1,11 @@
 # writeAgent · 论文写作 Agent
 
-面向学术论文写作的智能 Agent，遵循"Main Agent 规划 + 动态 Sub-agent 推理 + Skill 确定性执行"模式，采用 **固定 workflow + 本地 ReAct + OpenClaw 兼容 Skill** 的多轨架构：
+面向学术论文写作的智能 Agent，遵循"Main Agent 规划 + 动态 Sub-agent 推理 + Skill 确定性执行"模式，采用 **本地 ReAct + OpenClaw 兼容 Skill** 的双轨架构：
 
-- **workflow mode** `python -m agent run --mode workflow`：LangGraph `StateGraph` 驱动固定 Skill pipeline，用于端到端回归测试、课堂演示和稳定复现，支持检查点、断点恢复、`missing_info` 回环、失败重试。
-- **react mode** `python -m agent run --mode react`：独立的 LangGraph ReAct `StateGraph` 读取 `SKILL.md` / Skill Registry，由 Main Agent 输出严格 JSON action。复杂认知任务通过 `delegate_to_subagent` 动态派生临时 Sub-agent，Sub-agent 写 `state.intermediate`，再由 Skill script 校验、渲染和落盘。
+- **本地 ReAct 模式** `python -m agent run`：LangGraph ReAct `StateGraph` 读取 `SKILL.md` / Skill Registry，由 Main Agent 输出严格 JSON action。复杂认知任务通过 `delegate_to_subagent` 动态派生临时 Sub-agent，Sub-agent 写 `state.intermediate`，再由 Skill script 校验、渲染和落盘。
 - **OpenClaw 模式**：把 `./skills/` 整体作为工作区 Skill 安装；OpenClaw 自带ReAct 大脑依 `SKILL.md` 的 `description` 字段自主调度，**不依赖 LangGraph**。
 
-这些模式共享同一份 `./skills/*/scripts/run.py` 业务实现 + 同一份 `state.json`。workflow mode 是固定流程回归测试层；react mode 是本地 Agent-native 调试层。Skill script 不直接调用 LLM，也不生成专业认知内容，只读取 `state.intermediate` 并执行 schema validation、确定性增强、格式化、渲染和正式字段写入。
+两种模式共享同一份 `./skills/*/scripts/run.py` 业务实现 + 同一份 `state.json`。本地 ReAct 模式用于 Agent-native 调试与演示；OpenClaw 模式用于平台部署。Skill script 不直接调用 LLM，也不生成专业认知内容，只读取结构化输入并执行 schema validation、确定性增强、格式化、渲染和正式字段写入。
 
 架构原则：
 
@@ -37,21 +36,14 @@ writeAgent/
 │
 ├── schemas/                       # 6 份 JSON Schema（跨 Skill 输入输出契约）
 │
-├── agent/                         # 本地编排层（workflow + react）
-│   ├── cli.py                     # `python -m agent run|resume|inspect`
-│   ├── workflow_runner.py         # 固定 workflow 入口封装
+├── agent/                         # 本地 ReAct 编排层
+│   ├── cli.py                     # `python -m agent run|inspect`
 │   ├── react_runner.py            # LangGraph ReAct StateGraph 入口
 │   ├── llm_gateway.py             # 唯一模型调用治理层
 │   ├── state_store.py             # state.json 读写 / intermediate 写入
 │   ├── trace_store.py             # react/subagent/llm trace 写入
 │   ├── a2a/                       # 轻量 A2A-like 委派协议
 │   ├── subagents/                 # SubAgentFactory / Runtime / policy / tools
-│   ├── workflow/                  # 固定 LangGraph 流水线
-│   │   ├── graph.py               # StateGraph 构建
-│   │   ├── nodes.py               # Skill 节点 + clarify/retry 节点
-│   │   ├── state.py               # TypedDict + reducer
-│   │   ├── checkpointer.py        # SqliteSaver + state.json 旁路导出
-│   │   └── prompt.py              # 编排层提示词（SYSTEM / CLARIFY / RETRY）
 │   ├── react/                     # ReAct graph / nodes / state / registry / tools / prompts / types
 │   └── skill_runner.py            # 统一 subprocess 调用入口
 │
@@ -99,21 +91,15 @@ copy .env.example .env
 ### 3. 运行案例（本地模式）
 
 ```powershell
-# workflow mode：固定 LangGraph / pipeline 工作流，用于回归测试与稳定演示
-python -m agent run --mode workflow --case case/00-用户原始需求.md
-python -m agent run --mode workflow --request "请写一篇关于生成式 AI 辅助论文写作的论文"
-
-# react mode：Main ReAct Agent + 动态 Sub-agent 委派
-python -m agent run --mode react --request "请先生成一份关于生成式 AI 辅助论文写作的论文大纲"
+# 本地 ReAct：Main ReAct Agent + 动态 Sub-agent 委派
+python -m agent run --case case/00-用户原始需求.md
+python -m agent run --request "请先生成一份关于生成式 AI 辅助论文写作的论文大纲"
 
 # 查看当前 state
 python -m agent inspect
-
-# 从最近检查点恢复（workflow mode 专用）
-python -m agent resume
 ```
 
-默认 `python -m agent run` 仍等价于 `--mode workflow`，用于固定流程回归。react mode 运行结束后会打印每一步 action / observation 摘要，并写出：
+`python -m agent run` 运行结束后会打印每一步 action / observation 摘要，并写出：
 
 - `<workspace>/react_trace.json`：Main Agent 每一步 action / observation。
 - `<workspace>/subagent_trace.jsonl`：每个动态 Sub-agent 的委派 spec、状态与结果。

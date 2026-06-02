@@ -106,7 +106,7 @@
     },
     "missing_info": {
       "type": "array",
-      "description": "Skill 1 自动识别的关键缺失字段。非空时，编排层应触发 human_clarify 节点。",
+      "description": "Skill 1 自动识别的关键缺失字段。非空时，Agent 应向用户澄清或等待补充。",
       "items": {
         "type": "object",
         "required": ["field", "question", "criticality"],

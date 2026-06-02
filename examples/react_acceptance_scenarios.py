@@ -36,7 +36,7 @@ def main() -> int:
     for name, request, expectation in SCENARIOS:
         print(f"\n## {name}")
         if name != "policy_violation":
-            print(f'python -m agent run --mode react --request "{request}"')
+            print(f'python -m agent run --request "{request}"')
         else:
             print("python -m pytest tests/test_a2a_validator.py tests/test_subagent_runtime.py")
         print(expectation)

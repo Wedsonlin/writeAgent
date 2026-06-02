@@ -1,15 +1,11 @@
-"""writeAgent · LangGraph orchestrator package.
+"""writeAgent local ReAct orchestration package.
 
-This package is the *standalone-mode* brain. It is **not** required when Skills
-run inside OpenClaw — in that scenario OpenClaw's own ReAct agent dispatches
-each Skill based on its ``SKILL.md`` description.
+This package is the standalone-mode brain. It is not required when Skills run
+inside OpenClaw; in that scenario OpenClaw dispatches each Skill from its
+``SKILL.md`` description.
 
-Public entry points
--------------------
-- ``agent.cli:app``      Typer CLI exposed as ``python -m agent`` / ``writeagent``.
-- ``agent.workflow:build_graph()``  Returns a compiled LangGraph state machine.
-- ``agent.workflow:WriteAgentState``  Typed channel definitions + reducers.
-- ``agent.workflow_runner:WorkflowRunner``  Fixed pipeline entry wrapper.
+Public entry point: ``agent.cli:app`` exposed as ``python -m agent`` /
+``writeagent``.
 """
 
 __version__ = "0.1.0"

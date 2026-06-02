@@ -33,7 +33,7 @@
 
 `criticality`：
 
-- `blocker` —— 不补齐就无法继续生成任务书；编排层会触发 `human_clarify`。
+- `blocker` —— 不补齐就无法继续生成任务书；Agent 应向用户澄清。
 - `important` —— 缺失会显著降低质量，但可暂时占位；用户在后续轮次再补充。
 - `nice-to-have` —— 不影响主流程，仅作为提示。
 

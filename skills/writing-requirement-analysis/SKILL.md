@@ -1,6 +1,6 @@
 ---
 name: writing-requirement-analysis
-description: 论文写作需求分析与选题定位 Skill。当用户提出"写论文/任务书/选题/投稿/写作要求"时使用。本 Skill 不直接调用模型；应先由 Main Agent 派生需求分析 Sub-agent 生成 state.intermediate.requirement.raw_writing_task，再运行 scripts/run.py 校验、增强、渲染并写入 state.writing_task。
+description: 分析论文写作需求并生成结构化写作任务书。Use when the user mentions 写论文, 任务书, 选题, 投稿, 研究方向, 写作要求, or needs a thesis/article brief before drafting.
 user-invocable: true
 disable-model-invocation: true
 homepage: https://example.org/writeagent
@@ -9,111 +9,83 @@ metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 
 # 写作需求分析与选题定位
 
-把用户对"写一篇论文"的模糊请求转化为机器可消费、人类可读的**论文写作任务书**（`writing_task`），作为后续 Skill 的统一输入。
-
-本 Skill 遵循 Agent-native 分工：
-
-- Main Agent 判断是否需要需求分析。
-- Requirement Sub-agent 读取 `user_request`、本 Skill 的 `SKILL.md`、`prompts/` 与 `references/`，生成结构化 intermediate。
-- `scripts/run.py` 只执行确定性校验、增强、渲染和正式落盘。
-- Skill script 不直接调用 LLM，不访问 `agent/llm_gateway.py`。
+把"想写一篇论文"这类模糊请求转化为机器可消费、人类可读的**论文写作任务书**（`writing_task`），为文献梳理、大纲和正文写作提供稳定输入。
 
 ## 何时使用
 
 满足任一条件即可触发：
 
 - 用户提到"写论文"、"论文写作"、"投稿"、"任务书"、"选题"、"研究方向"。
-- 在 writeAgent 流水线的开始阶段、`state.json` 中尚未填充 `writing_task`。
-- 已有 `writing_task` 但用户明确要求"重新定位选题/调整任务书"。
+- 需要把口语化写作要求整理成可执行的论文任务书。
+- 已有任务书但用户明确要求"重新定位选题"、"调整研究范围"或"改投稿目标"。
 
-## Agent 使用流程
+## 输入
 
-### 1. 派生 Sub-agent
+- 用户原始写作请求。
+- 可选约束：论文类型、目标期刊/会议、语言、字数、研究范围、核心论点、参考文献线索。
+- 可选已有草稿：不完整的 `writing_task` 或人工填写的任务书片段。
 
-Main Agent 应先派生临时 Sub-agent，生成：
+## 工作流
 
-```jsonc
-{
-  "intermediate": {
-    "requirement": {
-      "raw_writing_task": {
-        "topic": "...",
-        "paper_type": "survey",
-        "language": "zh",
-        "target_journal": {"name": "未指定", "level": "未指定"},
-        "word_limit": {"total": 8000},
-        "core_arguments": ["..."],
-        "innovation_points": [],
-        "research_scope": {},
-        "chapter_framework": [],
-        "references_seed": [],
-        "missing_info": []
-      }
-    }
-  }
-}
+Use this checklist:
+
+```text
+Requirement analysis:
+- [ ] Extract the topic, paper type, language, journal target, word budget, scope, and core arguments.
+- [ ] Select a `paper_type`; default to `survey` only when the request is underspecified.
+- [ ] Preserve user-provided constraints instead of replacing them with defaults.
+- [ ] Add unresolved critical questions to `missing_info` rather than blocking the task.
+- [ ] Build or complete `chapter_framework` from the paper type and word budget.
+- [ ] Render a readable task book for human review.
 ```
 
-推荐 `SubAgentSpec`：
+## 输出
 
-```json
-{
-  "role": "requirement analysis specialist",
-  "task": "Convert the user request into a structured writing task draft.",
-  "input_keys": ["user_request"],
-  "output_key": "intermediate.requirement.raw_writing_task",
-  "skill_context": ["writing-requirement-analysis"],
-  "prompt_refs": ["skills/writing-requirement-analysis/prompts/extract_writing_task.md"],
-  "output_schema": "WritingTask",
-  "allowed_tools": ["inspect_state_subset", "read_skill_prompt", "read_skill_context"]
-}
-```
+- `writing_task` JSON（符合 `schemas/writing_task.schema.json`）。
+- `outputs/01-论文写作任务书.md`：人类可读 Markdown 任务书。
+- `missing_info[]`：仍需用户补充的问题，按 `blocker` / `important` / `nice-to-have` 标注优先级。
 
-### 2. 运行确定性入口
+## 字段质量规则
+
+- `topic` 应是一句清晰的论文主题，不要只写关键词。
+- `paper_type` 只能使用 `survey` / `empirical` / `theoretical` / `system` / `case_study` / `position`。
+- `core_arguments` 至少 1 条；缺失时在 `missing_info` 标记为 `blocker`。
+- `innovation_points` 可以暂缺，但应在 `missing_info` 标记为 `important`。
+- `target_journal.name` 未指定时填 `"未指定"`，不要编造期刊。
+- `references_seed` 只记录用户明确提供或可定位的文献线索。
+- `chapter_framework` 应包含章节标题、关键要点和字数预算。
+
+## 确定性辅助脚本
+
+本仓库提供脚本用于校验、补全期刊风格、生成章节模板并渲染 Markdown：
 
 ```bash
 python {baseDir}/scripts/run.py --state {workspace}/state.json [--user-request "..."]
 ```
 
-参数：
+脚本会：
 
-- `--state` 必填。指向共享 `state.json`（OpenClaw 默认 `~/.openclaw/workspace/.writeagent/state.json`）。
-- `--user-request` 可选。若提供则覆盖 `state.user_request`；否则从 state 中读取。
+- 匹配 `references/journal-styles.md` 中的期刊风格画像。
+- 按 `paper_type` 和总字数补齐章节框架。
+- 检测关键缺失信息并写入 `missing_info[]`。
+- 生成 `outputs/01-论文写作任务书.md`。
 
-调用前置：
+不要直接组合调用 `scripts/*.py` 内部 helper；优先使用 `scripts/run.py`。
 
-- `state.user_request` 必须存在。
-- `state.intermediate.requirement.raw_writing_task` 必须存在并为 JSON object。
+## 验证
 
-## 处理流程
+完成后检查：
 
-1. 读取 `state.intermediate.requirement.raw_writing_task`。
-2. 根据 `target_journal.name` 与 `target_journal.level` 在 `references/journal-styles.md` 中匹配风格画像（`style_profile`）。
-3. 根据 `paper_type` 加载章节模板，补齐 `chapter_framework`。
-4. 校验关键字段；缺失字段写入 `missing_info[]`。
-5. 用 `_shared.schemas.WritingTask` 做 pydantic 验证。
-6. 把正式 `writing_task` 写回 `state.json`。
-7. 在 `outputs/01-论文写作任务书.md` 渲染人类可读版本。
-8. stdout 输出一段简短 Markdown 摘要。
+- `writing_task.topic`、`paper_type`、`core_arguments` 非空且与用户请求一致。
+- `missing_info` 中的 `blocker` 项确实无法从现有请求推断。
+- 章节字数预算合计接近 `word_limit.total`。
+- Markdown 任务书可供用户直接确认或修改。
+- 若脚本输出 schema validation warning，先修正字段结构，再继续下游写作。
 
-## 输出
+## 参考资料
 
-- `state.writing_task`（符合 `schemas/writing_task.schema.json`）。
-- `outputs/01-论文写作任务书.md` —— 人类可读 Markdown。
-- stdout —— 一段汇总摘要（含 missing_info 提示）。
-
-详细字段定义见 `{baseDir}/references/task-book-fields.md`。
-
-## 异常情况
-
-- **缺少 intermediate**：stderr 输出明确错误，exit code 1。Main Agent 应先派生 requirement analysis Sub-agent。
-- **intermediate 不是 JSON object**：stderr 输出错误，exit code 1。
-- **关键字段缺失（blocker）**：Skill 正常 exit 0，但在 `missing_info` 中标记，等待编排层调用 `human_clarify`。
-- **目标期刊未匹配**：使用 `references/journal-styles.md` 的 `default` 条目作为兜底；不会因此失败。
-
-## 过程知识
-
-- `prompts/extract_writing_task.md`：供 Sub-agent 生成 raw writing task。
-- `references/task-book-fields.md`：字段说明。
-- `references/journal-styles.md`：期刊风格画像。
-- `scripts/*.py`：Skill 内部确定性 helper，不应由 Main Agent 自由组合调用。
+- [prompts/extract_writing_task.md](prompts/extract_writing_task.md)：需求抽取提示。
+- [references/task-book-fields.md](references/task-book-fields.md)：字段语义与边界。
+- [references/paper-type-templates.md](references/paper-type-templates.md)：论文类型与章节模板。
+- [references/journal-styles.md](references/journal-styles.md)：期刊风格画像。
+- [assets/example_output.md](assets/example_output.md)：任务书输出示例。
