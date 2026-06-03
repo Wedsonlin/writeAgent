@@ -27,9 +27,9 @@ class LLMGatewayConfig:
             api_key=os.environ.get("WRITEAGENT_LLM_API_KEY", ""),
             base_url=os.environ.get(
                 "WRITEAGENT_LLM_BASE_URL",
-                "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                "https://api.deepseek.com",
             ),
-            model=os.environ.get("WRITEAGENT_LLM_MODEL", "qwen-plus"),
+            model=os.environ.get("WRITEAGENT_LLM_MODEL", "deepseek-v4-pro"),
         )
 
 

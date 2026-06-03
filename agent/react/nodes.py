@@ -64,6 +64,12 @@ class ReactNodes:
         answer = str(state.get("answer") or "")
         last_observation: dict[str, Any] = {}
 
+        """
+        tool_calls=[
+            {"name": "inspect_state", "args": {}, "id": "call_1"},
+            {"name": "run_skill", "args": {"skill_name": "...", "reason": "..."}, "id": "call_2"},
+        ]
+        """
         for tool_call in tool_calls:
             name = str(tool_call.get("name") or "")
             args = dict(tool_call.get("args") or {})

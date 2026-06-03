@@ -12,6 +12,8 @@ SCHEMAS_DIR = REPO_ROOT / "schemas"
 
 NAMED_SCHEMA_FILES = {
     "WritingTask": "writing_task.schema.json",
+    "raw_writing_task_schema": "writing_task.schema.json",
+    "PaperOutline": "paper_outline.schema.json",
     "PaperClaimsExtraction": "paper_claims.schema.json",
     "LiteratureSynthesis": "literature_synthesis.schema.json",
     "LiteratureReport": "literature_report.schema.json",

@@ -40,6 +40,7 @@ from _shared.schemas import WritingTask  # noqa: E402
 
 from chapter_template import build_chapter_framework  # noqa: E402
 from journal_match import match_journal_style  # noqa: E402
+from normalize import normalize_writing_task_payload  # noqa: E402
 from renderer import render_task_book  # noqa: E402
 
 
@@ -73,7 +74,22 @@ def main() -> int:
 
     started = time.perf_counter()
     try:
-        task_payload = _extract_writing_task(state)
+        raw_payload = _extract_writing_task(state)
+        task_payload = normalize_writing_task_payload(raw_payload)
+        # #region agent log
+        _debug_log(
+            "H-C",
+            "skills/writing-requirement-analysis/scripts/run.py:main",
+            "normalized writing task payload",
+            {
+                "raw_keys": sorted(raw_payload.keys()),
+                "topic": task_payload.get("topic"),
+                "paper_type": task_payload.get("paper_type"),
+                "core_arguments_len": len(task_payload.get("core_arguments") or []),
+                "chapter_framework_len": len(task_payload.get("chapter_framework") or []),
+            },
+        )
+        # #endregion
     except Exception as exc:  # noqa: BLE001
         traceback.print_exc(file=sys.stderr)
         append_history(state, "writing-requirement-analysis", "error", message=str(exc))
@@ -215,6 +231,23 @@ def _detect_missing(payload: dict[str, Any]) -> None:
             "important",
             "由 Skill 2 文献综述结果反推",
         )
+
+
+def _debug_log(hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
+    import json
+    import time
+
+    payload = {
+        "sessionId": "755fc4",
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    log_path = _HERE.parent.parent.parent / "debug-755fc4.log"
+    with log_path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
 
 
 def _emit_stdout_summary(task: dict[str, Any], md_path: Path, duration_ms: int) -> None:
