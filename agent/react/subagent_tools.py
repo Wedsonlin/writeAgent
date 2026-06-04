@@ -9,12 +9,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from ..a2a.types import SubAgentResult, SubAgentSpec
+from ..file_tools import DEFAULT_MAX_CHARS, read_workspace_file as read_file_under_workspace
 from ..state_store import StateStore, load_state, summarize_state
 
 
 DEFAULT_SUBAGENT_TOOLS = {
     "inspect_state",
     "read_state_keys",
+    "read_workspace_file",
     "write_intermediate",
     "submit_subagent_result",
 }
@@ -24,8 +26,19 @@ class ReadStateKeysArgs(BaseModel):
     keys: list[str] = Field(..., description="Authorized input keys to read.")
 
 
+class ReadWorkspaceFileArgs(BaseModel):
+    path: str = Field(..., description="Workspace file path authorized by SubAgentSpec.file_refs.")
+    max_chars: int = Field(DEFAULT_MAX_CHARS, description="Maximum characters to return.")
+
+
 class WriteIntermediateArgs(BaseModel):
-    value: dict[str, Any] = Field(..., description="JSON object to write to the assigned intermediate output key.")
+    value: dict[str, Any] = Field(
+        ...,
+        description=(
+            "JSON object to write to the assigned intermediate output key. "
+            "Do not pass a bare array; wrap arrays under the schema key such as papers/claims/items."
+        ),
+    )
 
 
 class SubmitSubAgentResultArgs(BaseModel):
@@ -70,6 +83,16 @@ def create_subagent_tools(
         if unauthorized:
             return _json({"tool": "read_state_keys", "status": "fatal", "error": "Unauthorized state keys.", "keys": unauthorized})
         return _json({"tool": "read_state_keys", "status": "ok", "values": state_store.extract(state_path, keys)})
+
+    def read_workspace_file_tool(path: str, max_chars: int = DEFAULT_MAX_CHARS) -> str:
+        return _json(
+            read_file_under_workspace(
+                path,
+                workspace_root=Path(state_path).parent,
+                allowed_refs=spec.file_refs,
+                max_chars=max_chars,
+            )
+        )
 
     def write_intermediate_tool(value: dict[str, Any]) -> str:
         if spec.write_policy != "write_intermediate":
@@ -142,6 +165,12 @@ def create_subagent_tools(
             args_schema=ReadStateKeysArgs,
         ),
         StructuredTool.from_function(
+            name="read_workspace_file",
+            description="Read only files explicitly listed in SubAgentSpec.file_refs.",
+            func=read_workspace_file_tool,
+            args_schema=ReadWorkspaceFileArgs,
+        ),
+        StructuredTool.from_function(
             name="write_intermediate",
             description="Write a JSON object to the SubAgentSpec.output_key intermediate path.",
             func=write_intermediate_tool,
@@ -162,6 +191,7 @@ def _json(value: dict[str, Any]) -> str:
 
 __all__ = [
     "DEFAULT_SUBAGENT_TOOLS",
+    "ReadWorkspaceFileArgs",
     "ReadStateKeysArgs",
     "SubmitSubAgentResultArgs",
     "WriteIntermediateArgs",

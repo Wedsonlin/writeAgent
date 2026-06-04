@@ -16,6 +16,7 @@ class SubAgentSpec:
     output_key: str
     skill_context: list[str] = field(default_factory=list)
     prompt_refs: list[str] = field(default_factory=list)
+    file_refs: list[str] = field(default_factory=list)
     output_schema: str | dict[str, Any] | None = None
     allowed_tools: list[str] = field(default_factory=list)
     success_criteria: list[str] = field(default_factory=list)
@@ -48,6 +49,7 @@ class SubAgentTrace:
     output_key: str
     skill_context: list[str]
     prompt_refs: list[str]
+    file_refs: list[str]
     allowed_tools: list[str]
     constraints: dict[str, Any]
     status: str

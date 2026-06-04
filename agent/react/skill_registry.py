@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .skill_contracts import load_skill_contract, render_contract_for_prompt
 from .types import SkillSpec
 
 
@@ -42,6 +43,7 @@ class SkillRegistry:
             name = str(frontmatter.get("name") or skill_dir.name).strip()
             description = _extract_description(frontmatter, body)
             entrypoint = skill_dir / "scripts" / "run.py"
+            contract = load_skill_contract(skill_dir, frontmatter)
             specs.append(
                 SkillSpec(
                     name=name,
@@ -50,6 +52,7 @@ class SkillRegistry:
                     entrypoint=entrypoint,
                     raw_markdown=raw,
                     metadata=frontmatter,
+                    contract=contract,
                     entrypoint_exists=entrypoint.exists(),
                 )
             )
@@ -85,6 +88,7 @@ class SkillRegistry:
             lines.append(f"- name: {spec.name}")
             lines.append(f"  executable: {status}")
             lines.append(f"  description: {_one_line(spec.description)}")
+            lines.extend(render_contract_for_prompt(spec.contract))
         return "\n".join(lines)
 
 

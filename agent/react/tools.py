@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
 
 from ..a2a.types import SubAgentResult, SubAgentSpec
+from ..file_tools import DEFAULT_MAX_CHARS, read_workspace_file as read_file_under_workspace
 from ..skill_runner import SkillRunner
 from ..state_store import StateStore, load_state, summarize_state
 from ..subagents.factory import SubAgentFactory
@@ -21,6 +22,11 @@ class RunSkillArgs(BaseModel):
     reason: str = Field("", description="Why this Skill is needed now.")
 
 
+class ReadWorkspaceFileArgs(BaseModel):
+    path: str = Field(..., description="Workspace-relative file path to read.")
+    max_chars: int = Field(DEFAULT_MAX_CHARS, description="Maximum characters to return.")
+
+
 class DelegateToSubagentArgs(BaseModel):
     role: str = Field(..., description="Specialist role for the delegated SubAgent.")
     task: str = Field(..., description="Specific local task to complete.")
@@ -29,6 +35,7 @@ class DelegateToSubagentArgs(BaseModel):
     output_schema: str | dict[str, Any] | None = Field(None, description="Expected output schema name or JSON schema.")
     skill_context: list[str] = Field(default_factory=list, description="Skill docs the SubAgent may use as context.")
     prompt_refs: list[str] = Field(default_factory=list, description="Prompt/template refs the SubAgent may read.")
+    file_refs: list[str] = Field(default_factory=list, description="Workspace files the SubAgent may read.")
     allowed_tools: list[str] = Field(default_factory=list, description="Additional explicitly allowed SubAgent tools.")
     success_criteria: list[str] = Field(default_factory=list, description="Criteria for successful completion.")
     constraints: dict[str, Any] = Field(default_factory=dict, description="A2A execution constraints.")
@@ -49,6 +56,7 @@ def create_main_tools(
     subagent_runtime: SubAgentRuntime | None,
     subagent_factory: SubAgentFactory | None = None,
     tail_chars: int = 3000,
+    human_input_provider: Callable[[str, str], str] | None = None,
 ) -> list[Any]:
     """Create LangChain tools with runtime-only values hidden in closures."""
     try:
@@ -76,6 +84,9 @@ def create_main_tools(
             )
         )
 
+    def read_workspace_file_tool(path: str, max_chars: int = DEFAULT_MAX_CHARS) -> str:
+        return _json(read_workspace_file(path, state_path, max_chars=max_chars))
+
     def delegate_to_subagent_tool(**kwargs: Any) -> str:
         if subagent_runtime is None:
             return _json({"tool": "delegate_to_subagent", "status": "fatal", "error": "SubAgentRuntime is not configured."})
@@ -84,6 +95,17 @@ def create_main_tools(
         return _json(subagent_result_to_observation(result))
 
     def ask_user_tool(question: str, reason: str = "") -> str:
+        if human_input_provider is not None:
+            answer = human_input_provider(question, reason)
+            return _json(
+                {
+                    "tool": "ask_user",
+                    "status": "answered",
+                    "question": question,
+                    "reason": reason,
+                    "answer": answer,
+                }
+            )
         return _json({"tool": "ask_user", "status": "ask_user", "question": question, "reason": reason})
 
     return [
@@ -97,6 +119,15 @@ def create_main_tools(
             description="Execute a registered deterministic Skill script and return a JSON result.",
             func=run_skill_tool,
             args_schema=RunSkillArgs,
+        ),
+        StructuredTool.from_function(
+            name="read_workspace_file",
+            description=(
+                "Read a text file under the current writeAgent workspace. "
+                "Use this for generated outputs or other simple file reads; do not delegate simple file reading."
+            ),
+            func=read_workspace_file_tool,
+            args_schema=ReadWorkspaceFileArgs,
         ),
         StructuredTool.from_function(
             name="delegate_to_subagent",
@@ -171,22 +202,24 @@ def run_skill(
         result = skill_runner.run(skill_name, state_path)
     except Exception as exc:  # noqa: BLE001 - surface subprocess/lookup failures to the LLM.
         after = load_state(state_path)
+        error_text = str(exc)
         return {
             "tool": "run_skill",
             "skill": skill_name,
             "reason": reason,
             "status": "error",
-            "error": str(exc),
+            "error": error_text,
+            "contract_hints": _contract_hints(spec, error_text),
             "duration_ms": 0,
             "stdout_tail": "",
-            "stderr_tail": str(exc)[-tail_chars:],
+            "stderr_tail": error_text[-tail_chars:],
             "state_keys": sorted(after.keys()),
             "produced_keys": _new_keys(before, after),
             "updated_keys": _updated_keys(before, after),
         }
 
     after = result.state_after or load_state(state_path)
-    return {
+    observation = {
         "tool": "run_skill",
         "skill": skill_name,
         "reason": reason,
@@ -199,6 +232,11 @@ def run_skill(
         "updated_keys": _updated_keys(before, after),
         "state_summary": summarize_state(after),
     }
+    if result.status != "ok":
+        hints = _contract_hints(spec, f"{result.stderr}\n{result.stdout}")
+        if hints:
+            observation["contract_hints"] = hints
+    return observation
 
 
 def inspect_state(state_path: Path) -> dict[str, Any]:
@@ -212,6 +250,20 @@ def inspect_state(state_path: Path) -> dict[str, Any]:
         "state_keys": sorted(state.keys()),
         "summary": summarize_state(state),
     }
+
+
+def read_workspace_file(
+    path: str,
+    state_path: Path,
+    *,
+    max_chars: int = DEFAULT_MAX_CHARS,
+) -> dict[str, Any]:
+    """Read a file under the active runtime workspace."""
+    return read_file_under_workspace(
+        path,
+        workspace_root=Path(state_path).parent,
+        max_chars=max_chars,
+    )
 
 
 def _json(value: dict[str, Any]) -> str:
@@ -243,12 +295,21 @@ def _canonical(value: Any) -> str:
         return repr(value)
 
 
+def _contract_hints(spec: Any, text: str) -> list[str]:
+    contract = getattr(spec, "contract", None)
+    common_errors = list(getattr(contract, "common_errors", []) or [])
+    lowered = text.lower()
+    return [hint for hint in common_errors if str(hint).lower() in lowered]
+
+
 __all__ = [
     "AskUserArgs",
     "DelegateToSubagentArgs",
+    "ReadWorkspaceFileArgs",
     "RunSkillArgs",
     "create_main_tools",
     "inspect_state",
+    "read_workspace_file",
     "run_skill",
     "subagent_result_to_observation",
 ]

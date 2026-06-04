@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from .skill_contracts import SkillContract
+
 
 ReactRunStatus = Literal["finished", "ask_user", "error", "max_steps_exceeded"]
 
@@ -20,6 +22,7 @@ class SkillSpec:
     entrypoint: Path
     raw_markdown: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    contract: SkillContract = field(default_factory=SkillContract)
     entrypoint_exists: bool = True
 
 

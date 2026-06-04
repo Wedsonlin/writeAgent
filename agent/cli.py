@@ -9,9 +9,29 @@ Sub-commands
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from pathlib import Path
 from typing import Optional
+
+
+def _configure_utf8_stdout() -> None:
+    """Best-effort switch console streams to UTF-8 so rich glyphs never crash.
+
+    On Chinese Windows the default code page is GBK, which raises
+    ``UnicodeEncodeError`` on box-drawing / arrow glyphs. ``errors='replace'``
+    keeps output flowing on terminals that still can not render a character.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:  # noqa: BLE001 - leave stream as-is if unsupported.
+                pass
+
+
+_configure_utf8_stdout()
 
 try:
     import typer
@@ -24,6 +44,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
+from .console_view import RichConsoleView
+from .human_input import ConsoleHumanInput
+from .react.skill_contract_inference import build_contract_inference_prompt, generated_contract_path
 from .react.skill_registry import SkillRegistry
 from .react_runner import ReactRunner
 from .skill_runner import SKILLS_DIR, SkillRunner
@@ -83,17 +106,33 @@ def run(
         "--max-steps",
         help="最大 ReAct 决策步数。",
     ),
+    stream: bool = typer.Option(
+        True,
+        "--stream/--no-stream",
+        help="实时流式展示每一步 ReAct 推理 / 工具调用 / SubAgent 委派（默认开启）。",
+    ),
+    human_in_loop: bool = typer.Option(
+        True,
+        "--human-in-loop/--no-human-in-loop",
+        help="遇到 ask_user 时在当前终端收集用户补充信息并继续执行（默认开启）。",
+    ),
 ) -> None:
     """Kick off a fresh writeAgent pipeline."""
     ws = _ensure_workspace(workspace)
     case_id, user_request = _read_request(case, request)
-    console.print(
-        Panel.fit(
-            f"[bold green]Run started[/]  mode=langchain-react  case_id={case_id}\n"
-            f"workspace = {ws}",
-            title="writeAgent",
+
+    view = RichConsoleView(console) if stream else None
+    human_input_provider = ConsoleHumanInput(console) if human_in_loop else None
+    if view is not None:
+        view({"type": "run_start", "case_id": case_id, "workspace": str(ws), "max_steps": max_steps})
+    else:
+        console.print(
+            Panel.fit(
+                f"[bold green]Run started[/]  mode=langchain-react  case_id={case_id}\n"
+                f"workspace = {ws}",
+                title="writeAgent",
+            )
         )
-    )
 
     init = _initial_state(
         case_id=case_id,
@@ -108,12 +147,18 @@ def run(
         skill_registry=registry,
         skill_runner=SkillRunner(),
         max_steps=max_steps,
+        event_sink=view,
+        human_input_provider=human_input_provider,
     ).run(
         user_request=user_request,
         workspace_root=ws,
         state_path=ws / "state.json",
     )
-    _print_react_summary(react_result)
+    if view is not None:
+        view({"type": "run_end", "status": react_result.status, "answer": react_result.answer})
+        _print_react_outcome(react_result)
+    else:
+        _print_react_summary(react_result)
     if react_result.status == "error":
         raise typer.Exit(code=1)
 
@@ -146,6 +191,31 @@ def inspect(
 
 
 # --------------------------------------------------------------------------- #
+# infer-contract
+# --------------------------------------------------------------------------- #
+
+
+@app.command("infer-contract")
+def infer_contract(
+    skill: str = typer.Argument(..., help="Skill name under ./skills/."),
+) -> None:
+    """Print an LLM-ready prompt for generating a cached Skill contract."""
+    skill_dir = SKILLS_DIR / skill
+    if not skill_dir.exists():
+        console.print(f"[red]Unknown skill directory: {skill_dir}[/]")
+        raise typer.Exit(code=1)
+    prompt = build_contract_inference_prompt(skill_dir, schemas_dir=REPO_ROOT / "schemas")
+    console.print(
+        Panel(
+            f"Review or send this prompt to an LLM, then save valid JSON to:\n"
+            f"{generated_contract_path(skill_dir)}",
+            title="Skill contract inference scaffold",
+        )
+    )
+    console.print(Syntax(prompt, "json", theme="monokai", word_wrap=True))
+
+
+# --------------------------------------------------------------------------- #
 # helpers
 # --------------------------------------------------------------------------- #
 
@@ -169,6 +239,15 @@ def _initial_state(
     if references_dir:
         state["references_dir"] = references_dir
     return state
+
+
+def _print_react_outcome(result) -> None:
+    """Concise final panel for stream mode (per-step detail already shown live)."""
+    lines = [
+        f"State path: {result.state_path}",
+        f"Trace path: {result.trace_path}",
+    ]
+    console.print(Panel("\n".join(lines), title="Artifacts", border_style="dim"))
 
 
 def _print_react_summary(result) -> None:

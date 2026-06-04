@@ -9,7 +9,7 @@ from ..a2a.types import A2AError, SubAgentSpec
 
 
 DEFAULT_SUBAGENT_CONSTRAINTS = {
-    "max_steps": 3,
+    "max_steps": 10,
     "max_context_chars": 30000,
     "max_output_chars": 50000,
     "can_delegate": False,

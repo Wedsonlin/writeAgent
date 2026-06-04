@@ -37,6 +37,7 @@ class SubAgentSpecModel(BaseModel):
     output_key: str
     skill_context: list[str] = Field(default_factory=list)
     prompt_refs: list[str] = Field(default_factory=list)
+    file_refs: list[str] = Field(default_factory=list)
     output_schema: str | dict[str, Any] | None = None
     allowed_tools: list[str] = Field(default_factory=list)
     success_criteria: list[str] = Field(default_factory=list)
@@ -81,6 +82,7 @@ class SubAgentTraceModel(BaseModel):
     output_key: str
     skill_context: list[str]
     prompt_refs: list[str]
+    file_refs: list[str] = Field(default_factory=list)
     allowed_tools: list[str]
     constraints: dict[str, Any]
     status: str

@@ -1,0 +1,101 @@
+{
+  "required_state_keys": ["writing_task"],
+  "required_intermediate_keys": [
+    "intermediate.literature_review.paper_claims",
+    "intermediate.literature_review.synthesis"
+  ],
+  "formal_outputs": ["literature_report"],
+  "subagent_prerequisites": [
+    {
+      "role": "literature analysis specialist",
+      "task": "Produce object-shaped paper claims for the literature-review Skill. The value written to state must be a JSON object with a papers array, not a narrative report and not a bare array.",
+      "input_keys": ["writing_task"],
+      "output_key": "intermediate.literature_review.paper_claims",
+      "output_schema": {
+        "type": "object",
+        "required": ["papers"],
+        "additionalProperties": false,
+        "properties": {
+          "papers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "title", "authors", "year", "venue", "claim", "contribution", "limitation", "relevance"],
+              "properties": {
+                "id": {"type": "string"},
+                "title": {"type": "string"},
+                "authors": {"type": "string"},
+                "year": {"type": "integer"},
+                "venue": {"type": "string"},
+                "claim": {"type": "string"},
+                "contribution": {"type": "string"},
+                "limitation": {"type": "string"},
+                "relevance": {"type": "string"},
+                "key_claims": {"type": "array", "items": {"type": "string"}},
+                "evidence_strength": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "success_criteria": [
+        "write_intermediate.value is a JSON object",
+        "value contains a papers array",
+        "each paper has id/title/authors/year/venue/claim/contribution/limitation/relevance"
+      ]
+    },
+    {
+      "role": "literature synthesis specialist",
+      "task": "Synthesize paper_claims into a structured object for the literature-review Skill. Lists such as controversies and research_gaps must be arrays, not prose strings.",
+      "input_keys": ["writing_task", "intermediate.literature_review.paper_claims"],
+      "output_key": "intermediate.literature_review.synthesis",
+      "output_schema": {
+        "type": "object",
+        "required": ["clusters", "timeline_summary", "consensus", "controversies", "research_gaps", "alignments"],
+        "properties": {
+          "clusters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "summary", "representative_papers"],
+              "properties": {
+                "name": {"type": "string"},
+                "summary": {"type": "string"},
+                "representative_papers": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          },
+          "timeline_summary": {"type": "string"},
+          "consensus": {"type": "array", "items": {"type": "string"}},
+          "controversies": {"type": "array", "items": {"type": "string"}},
+          "research_gaps": {"type": "array", "items": {"type": "string"}},
+          "alignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["paper_id", "core_argument_index", "stance", "note"],
+              "properties": {
+                "paper_id": {"type": "string"},
+                "core_argument_index": {"type": "integer"},
+                "stance": {"type": "string"},
+                "note": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "success_criteria": [
+        "controversies is a JSON array",
+        "research_gaps is a JSON array",
+        "alignments reference paper ids from paper_claims"
+      ]
+    }
+  ],
+  "common_errors": [
+    "intermediate.literature_review.paper_claims missing",
+    "intermediate.literature_review.synthesis missing",
+    "paper_claims must be a list or an object containing paper_claims/papers/claims",
+    "write_intermediate.value must be a JSON object",
+    "controversies must be a list"
+  ]
+}

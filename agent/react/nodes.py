@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..state_store import load_state, write_state
 from ..trace_store import TraceStore
@@ -21,6 +21,7 @@ class ReactNodes:
         tools: list[Any],
         trace_store: TraceStore | None = None,
         max_steps: int = 24,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.model = model
         self.tools = tools
@@ -28,6 +29,7 @@ class ReactNodes:
         self.bound_model = model.bind_tools(tools)
         self.trace_store = trace_store
         self.max_steps = max_steps
+        self.event_sink = event_sink
 
     def main_agent_node(self, state: MainAgentState) -> dict[str, Any]:
         """Ask the bound ChatModel for either tool calls or a final answer."""
@@ -38,6 +40,17 @@ class ReactNodes:
             self._mark_state(Path(state["state_path"]), "error")
             return {"status": "error", "answer": str(exc), "error": str(exc)}
 
+        step_count = int(state.get("step_count", 0))
+        self._emit(
+            {
+                "type": "reasoning",
+                "agent": "main",
+                "step": step_count + 1,
+                "text": _message_text(ai_message),
+                "reasoning_content": _reasoning_content(ai_message),
+            }
+        )
+
         status = "running"
         answer = str(state.get("answer") or "")
         if not getattr(ai_message, "tool_calls", None):
@@ -45,6 +58,19 @@ class ReactNodes:
             answer = _message_text(ai_message)
             self._write_trace(state, status, list(state.get("steps", [])))
             self._mark_state(Path(state["state_path"]), status)
+        else:
+            pending_step = step_count
+            for tool_call in list(getattr(ai_message, "tool_calls", None) or []):
+                pending_step += 1
+                self._emit(
+                    {
+                        "type": "tool_call",
+                        "agent": "main",
+                        "step": pending_step,
+                        "name": str(tool_call.get("name") or ""),
+                        "args": dict(tool_call.get("args") or {}),
+                    }
+                )
 
         return {"messages": [ai_message], "status": status, "answer": answer}
 
@@ -88,6 +114,15 @@ class ReactNodes:
                 }
             )
             messages.append(ToolMessage(content=observation_text, tool_call_id=call_id, name=name))
+            self._emit(
+                {
+                    "type": "observation",
+                    "agent": "main",
+                    "step": step_count,
+                    "name": name,
+                    "observation": observation,
+                }
+            )
 
             if observation.get("status") == "ask_user":
                 status = "ask_user"
@@ -139,6 +174,24 @@ class ReactNodes:
         state["last_runner"] = "langchain-react"
         state["last_status"] = status
         write_state(state_path, state)
+
+    def _emit(self, event: dict[str, Any]) -> None:
+        if self.event_sink is None:
+            return
+        try:
+            self.event_sink(event)
+        except Exception:  # noqa: BLE001 - observability must never break the run.
+            pass
+
+
+def _reasoning_content(message: Any) -> str:
+    """Extract provider-specific chain-of-thought (e.g. DeepSeek-R1) if present."""
+    kwargs = getattr(message, "additional_kwargs", None)
+    if isinstance(kwargs, dict):
+        value = kwargs.get("reasoning_content") or kwargs.get("reasoning")
+        if value:
+            return str(value)
+    return ""
 
 
 def _message_text(message: Any) -> str:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .llm_gateway import LLMGateway
 from .react.graph import build_graph
@@ -32,12 +32,16 @@ class ReactRunner:
         skill_runner: SkillRunner,
         max_steps: int = 24,
         model: Any | None = None,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+        human_input_provider: Callable[[str, str], str] | None = None,
     ) -> None:
         self.llm_gateway = llm_gateway
         self.skill_registry = skill_registry
         self.skill_runner = skill_runner
         self.max_steps = max_steps
         self.model = model
+        self.event_sink = event_sink
+        self.human_input_provider = human_input_provider
 
     def run(
         self,
@@ -75,6 +79,7 @@ class ReactRunner:
             llm_gateway=llm_gateway,
             state_store=state_store,
             trace_store=trace_store,
+            event_sink=self.event_sink,
         )
         tools = create_main_tools(
             skill_registry=self.skill_registry,
@@ -82,9 +87,16 @@ class ReactRunner:
             state_path=state_path,
             subagent_runtime=subagent_runtime,
             subagent_factory=SubAgentFactory(parent_agent_id="main"),
+            human_input_provider=self.human_input_provider,
         )
         model = self.model or LangChainModelFactory.from_gateway(llm_gateway, trace_store=trace_store).create_main_model()
-        nodes = ReactNodes(model=model, tools=tools, trace_store=trace_store, max_steps=self.max_steps)
+        nodes = ReactNodes(
+            model=model,
+            tools=tools,
+            trace_store=trace_store,
+            max_steps=self.max_steps,
+            event_sink=self.event_sink,
+        )
         graph = build_graph(nodes)
         initial_summary = inspect_state(state_path).get("summary", {})
         graph_input: MainAgentState = {

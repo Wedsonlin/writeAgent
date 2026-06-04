@@ -23,7 +23,13 @@ def test_react_runner_calls_inspect_state_through_bound_tool(tmp_path: Path) -> 
 
     assert result.status == "finished"
     assert result.answer == "checked"
-    assert model.bound_tool_names == ["inspect_state", "run_skill", "delegate_to_subagent", "ask_user"]
+    assert model.bound_tool_names == [
+        "inspect_state",
+        "run_skill",
+        "read_workspace_file",
+        "delegate_to_subagent",
+        "ask_user",
+    ]
     assert [step["action"] for step in result.steps] == ["inspect_state"]
 
 
@@ -116,6 +122,36 @@ def test_react_runner_ask_user_tool_ends_run(tmp_path: Path) -> None:
     assert "论文主题" in result.answer
 
 
+def test_react_runner_continues_after_human_answer(tmp_path: Path) -> None:
+    result = _run(
+        tmp_path,
+        _registry_with_skills(tmp_path, []),
+        "信息不足。",
+        model=SequenceChatModel(
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "ask_user",
+                            "args": {"question": "请补充论文主题。", "reason": "missing topic"},
+                            "id": "call_ask",
+                        }
+                    ],
+                ),
+                AIMessage(content="已根据补充信息继续生成。"),
+            ]
+        ),
+        human_input_provider=lambda question, reason: "主题是生成式 AI 辅助论文写作",
+    )
+
+    assert result.status == "finished"
+    assert result.answer == "已根据补充信息继续生成。"
+    assert result.steps[0]["action"] == "ask_user"
+    assert result.steps[0]["observation"]["status"] == "answered"
+    assert "生成式 AI" in result.steps[0]["observation"]["answer"]
+
+
 def test_react_runner_final_answer_does_not_require_finish_action(tmp_path: Path) -> None:
     model = SequenceChatModel([AIMessage(content="final answer")])
     result = _run(tmp_path, _registry_with_skills(tmp_path, []), "直接回答。", model=model)
@@ -157,7 +193,14 @@ class FakeSkillRunner:
         )
 
 
-def _run(tmp_path: Path, registry: SkillRegistry, request: str, *, model: Any):
+def _run(
+    tmp_path: Path,
+    registry: SkillRegistry,
+    request: str,
+    *,
+    model: Any,
+    human_input_provider: Any | None = None,
+):
     workspace = tmp_path / "workspace"
     return ReactRunner(
         llm_gateway=LLMGateway(),
@@ -165,6 +208,7 @@ def _run(tmp_path: Path, registry: SkillRegistry, request: str, *, model: Any):
         skill_runner=FakeSkillRunner(),
         max_steps=8,
         model=model,
+        human_input_provider=human_input_provider,
     ).run(
         user_request=request,
         workspace_root=workspace,

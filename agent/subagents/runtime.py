@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Callable
 
 from ..a2a.types import SubAgentResult, SubAgentSpec
 from ..llm_gateway import LLMGateway
@@ -25,11 +26,13 @@ class SubAgentRuntime:
         state_store: StateStore | None = None,
         trace_store: TraceStore | None = None,
         repo_root: Path = REPO_ROOT,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.llm_gateway = llm_gateway
         self.state_store = state_store or StateStore()
         self.trace_store = trace_store
         self.repo_root = Path(repo_root)
+        self.event_sink = event_sink
 
     def run(self, spec: SubAgentSpec, state_path: Path) -> SubAgentResult:
         model_factory = LangChainModelFactory.from_gateway(self.llm_gateway, trace_store=self.trace_store)
@@ -38,6 +41,7 @@ class SubAgentRuntime:
             state_store=self.state_store,
             trace_store=self.trace_store,
             repo_root=self.repo_root,
+            event_sink=self.event_sink,
         ).run(spec, state_path)
 
 

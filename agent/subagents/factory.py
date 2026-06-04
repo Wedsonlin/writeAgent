@@ -49,6 +49,7 @@ class SubAgentFactory:
             output_key=output_key,
             skill_context=_list_str(action_input.get("skill_context")),
             prompt_refs=_list_str(action_input.get("prompt_refs")),
+            file_refs=_list_str(action_input.get("file_refs")),
             output_schema=output_schema,
             allowed_tools=_list_str(action_input.get("allowed_tools")),
             success_criteria=_list_str(action_input.get("success_criteria")),

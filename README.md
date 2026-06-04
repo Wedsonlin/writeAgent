@@ -99,7 +99,7 @@ python -m agent run --request "请先生成一份关于生成式 AI 辅助论文
 python -m agent inspect
 ```
 
-`python -m agent run` 运行结束后会打印每一步 tool call / observation 摘要，并写出：
+`python -m agent run` 默认以**实时流式界面**展示 Main Agent 的运行过程：每一步的模型推理（含 `reasoning_content` 思考链）、工具调用、observation 结果，以及 `delegate_to_subagent` 派生的 SubAgent 会以缩进面板嵌套展示其角色、任务及内部每一步。加 `--no-stream` 可回退到运行结束后的纯摘要模式。运行同时写出：
 
 - `<workspace>/react_trace.json`：Main Agent 每一步 tool call / observation。
 - `<workspace>/subagent_trace.jsonl`：每个动态 Sub-agent 的委派 spec、状态与结果。

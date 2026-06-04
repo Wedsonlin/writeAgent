@@ -5,12 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ..file_tools import validate_workspace_file_ref
 from .types import A2AError, SubAgentSpec
 
 
 ALLOWED_SUBAGENT_TOOLS = {
     "inspect_state",
     "read_state_keys",
+    "read_workspace_file",
     "write_intermediate",
     "submit_subagent_result",
 }
@@ -37,7 +39,12 @@ FORBIDDEN_TOOLS = {
 }
 
 
-def validate_subagent_spec(spec: SubAgentSpec, *, workspace_root: Path | None = None) -> list[A2AError]:
+def validate_subagent_spec(
+    spec: SubAgentSpec,
+    *,
+    workspace_root: Path | None = None,
+    file_workspace_root: Path | None = None,
+) -> list[A2AError]:
     """Return policy/protocol errors for a delegation request."""
     errors: list[A2AError] = []
     _require_text(spec.subagent_id, "subagent_id", errors)
@@ -99,6 +106,17 @@ def validate_subagent_spec(spec: SubAgentSpec, *, workspace_root: Path | None = 
             errors.append(A2AError("policy_violation", "Prompt ref must be a relative in-repository path.", {"prompt_ref": prompt_ref}))
         elif workspace_root and not _is_under((workspace_root / prompt_ref).resolve(), workspace_root.resolve()):
             errors.append(A2AError("policy_violation", "Prompt ref escapes workspace.", {"prompt_ref": prompt_ref}))
+
+    file_root = file_workspace_root or workspace_root
+    for file_ref in spec.file_refs:
+        if ".." in Path(file_ref).parts:
+            errors.append(A2AError("policy_violation", "File ref must not contain parent traversal.", {"file_ref": file_ref}))
+            continue
+        if file_root is None:
+            continue
+        file_error = validate_workspace_file_ref(file_ref, workspace_root=file_root)
+        if file_error:
+            errors.append(A2AError("policy_violation", file_error, {"file_ref": file_ref}))
 
     return errors
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..a2a.types import SubAgentResult, SubAgentSpec, SubAgentTrace
 from ..a2a.validator import errors_to_dicts, validate_subagent_spec
@@ -29,16 +29,30 @@ class SubAgentGraphFactory:
         state_store: StateStore | None = None,
         trace_store: TraceStore | None = None,
         repo_root: Path | None = None,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.model_factory = model_factory
         self.state_store = state_store or StateStore()
         self.trace_store = trace_store
         self.repo_root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[2]
+        self.event_sink = event_sink
 
     def run(self, spec: SubAgentSpec, state_path: Path) -> SubAgentResult:
         started_at = now_iso()
         constraints = merged_constraints(spec)
         spec.constraints = dict(constraints)
+        self._emit(
+            {
+                "type": "subagent_start",
+                "subagent_id": spec.subagent_id,
+                "parent_agent_id": spec.parent_agent_id,
+                "role": spec.role,
+                "task": spec.task,
+                "input_keys": list(spec.input_keys),
+                "file_refs": list(spec.file_refs),
+                "output_key": spec.output_key,
+            }
+        )
         trace = SubAgentTrace(
             subagent_id=spec.subagent_id,
             parent_agent_id=spec.parent_agent_id,
@@ -48,13 +62,18 @@ class SubAgentGraphFactory:
             output_key=spec.output_key,
             skill_context=spec.skill_context,
             prompt_refs=spec.prompt_refs,
+            file_refs=spec.file_refs,
             allowed_tools=spec.allowed_tools,
             constraints=spec.constraints,
             status="running",
             started_at=started_at,
         )
 
-        spec_errors = validate_subagent_spec(spec, workspace_root=self.repo_root)
+        spec_errors = validate_subagent_spec(
+            spec,
+            workspace_root=self.repo_root,
+            file_workspace_root=Path(state_path).parent,
+        )
         if spec_errors:
             return self._finish(trace, _failed_result(spec, errors_to_dicts(spec_errors)))
 
@@ -66,7 +85,15 @@ class SubAgentGraphFactory:
             result_sink=result_sink,
         )
         model = self.model_factory.create_subagent_model(spec=spec)
-        graph = build_subagent_graph(SubAgentNodes(model=model, tools=tools, result_sink=result_sink))
+        graph = build_subagent_graph(
+            SubAgentNodes(
+                model=model,
+                tools=tools,
+                result_sink=result_sink,
+                event_sink=self.event_sink,
+                subagent_id=spec.subagent_id,
+            )
+        )
         state_summary = self.state_store.extract(
             Path(state_path),
             spec.input_keys,
@@ -119,26 +146,79 @@ class SubAgentGraphFactory:
         trace.errors = list(result.errors)
         if self.trace_store is not None:
             self.trace_store.append_subagent_trace(asdict(trace))
+        self._emit(
+            {
+                "type": "subagent_end",
+                "subagent_id": result.subagent_id,
+                "status": result.status,
+                "output_key": result.output_key,
+                "result_summary": result.result_summary,
+                "errors": list(result.errors),
+                "artifacts": list(result.artifacts),
+            }
+        )
         return result
+
+    def _emit(self, event: dict[str, Any]) -> None:
+        if self.event_sink is None:
+            return
+        try:
+            self.event_sink(event)
+        except Exception:  # noqa: BLE001 - observability must never break the run.
+            pass
 
 
 class SubAgentNodes:
-    def __init__(self, *, model: Any, tools: list[Any], result_sink: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        *,
+        model: Any,
+        tools: list[Any],
+        result_sink: dict[str, Any],
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+        subagent_id: str = "",
+    ) -> None:
         self.bound_model = model.bind_tools(tools)
         self.tool_by_name = {str(getattr(tool, "name", "")): tool for tool in tools}
         self.result_sink = result_sink
+        self.event_sink = event_sink
+        self.subagent_id = subagent_id
 
     def subagent_node(self, state: SubAgentState) -> dict[str, Any]:
         try:
             ai_message = self.bound_model.invoke(list(state.get("messages", [])))
         except Exception as exc:  # noqa: BLE001
             return {"status": "failed", "answer": str(exc), "error": str(exc)}
+
+        step_count = int(state.get("step_count", 0))
+        self._emit(
+            {
+                "type": "subagent_reasoning",
+                "subagent_id": self.subagent_id,
+                "step": step_count + 1,
+                "text": _message_text(ai_message),
+                "reasoning_content": _reasoning_content(ai_message),
+            }
+        )
+
         if not getattr(ai_message, "tool_calls", None):
             return {
                 "messages": [ai_message],
                 "status": "blocked",
                 "answer": "SubAgent returned natural language instead of submit_subagent_result.",
             }
+        pending_step = step_count
+        for tool_call in list(getattr(ai_message, "tool_calls", None) or []):
+            pending_step += 1
+            self._emit(
+                {
+                    "type": "subagent_tool_call",
+                    "subagent_id": self.subagent_id,
+                    "step": pending_step,
+                    "name": str(tool_call.get("name") or ""),
+                    "args": dict(tool_call.get("args") or {}),
+                }
+            )
         return {"messages": [ai_message], "status": "running"}
 
     def subagent_tools_node(self, state: SubAgentState) -> dict[str, Any]:
@@ -172,6 +252,15 @@ class SubAgentNodes:
                 }
             )
             messages.append(ToolMessage(content=observation_text, tool_call_id=call_id, name=name))
+            self._emit(
+                {
+                    "type": "subagent_observation",
+                    "subagent_id": self.subagent_id,
+                    "step": step_count,
+                    "name": name,
+                    "observation": observation,
+                }
+            )
             if name == "submit_subagent_result" and "result" in self.result_sink:
                 result = self.result_sink["result"]
                 status = result.status
@@ -202,8 +291,29 @@ class SubAgentNodes:
         try:
             result = tool.invoke(args)
         except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+            if name == "write_intermediate" and ("valid dictionary" in error or "dict_type" in error):
+                return json.dumps(
+                    {
+                        "tool": name,
+                        "status": "fatal",
+                        "error": (
+                            "write_intermediate.value must be a JSON object; "
+                            "wrap arrays under the schema key such as papers/claims/items."
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
             return json.dumps({"tool": name, "status": "fatal", "error": str(exc)}, ensure_ascii=False)
         return result if isinstance(result, str) else json.dumps(result, ensure_ascii=False, default=str)
+
+    def _emit(self, event: dict[str, Any]) -> None:
+        if self.event_sink is None:
+            return
+        try:
+            self.event_sink(event)
+        except Exception:  # noqa: BLE001 - observability must never break the run.
+            pass
 
 
 def build_subagent_graph(nodes: SubAgentNodes):
@@ -249,6 +359,25 @@ def _parse_json_observation(text: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         return {"status": "ok", "text": text}
     return loaded if isinstance(loaded, dict) else {"status": "ok", "value": loaded}
+
+
+def _message_text(message: Any) -> str:
+    content = getattr(message, "content", message)
+    if isinstance(content, str):
+        return content
+    try:
+        return json.dumps(content, ensure_ascii=False, default=str)
+    except TypeError:
+        return str(content)
+
+
+def _reasoning_content(message: Any) -> str:
+    kwargs = getattr(message, "additional_kwargs", None)
+    if isinstance(kwargs, dict):
+        value = kwargs.get("reasoning_content") or kwargs.get("reasoning")
+        if value:
+            return str(value)
+    return ""
 
 
 __all__ = ["SubAgentGraphFactory", "SubAgentNodes", "build_subagent_graph"]
