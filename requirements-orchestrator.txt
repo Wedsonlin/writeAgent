@@ -1,10 +1,7 @@
-# Orchestrator-only dependencies (incremental on top of requirements-core.txt).
-# These are required ONLY for the standalone ReAct mode (`python -m agent run`).
-# OpenClaw deployments do not need to install these.
-
 -r requirements-core.txt
 
-langgraph>=0.2.30
-langchain-core>=0.3.0
+deepagents
+langgraph>=1.0.0
+langchain-core>=1.0.0
 langchain-openai
-typer>=0.12.0
+pytest

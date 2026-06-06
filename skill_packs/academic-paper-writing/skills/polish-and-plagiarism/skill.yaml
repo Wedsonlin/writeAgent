@@ -1,0 +1,6 @@
+id: polish-and-plagiarism
+stage_id: polish_and_plagiarism
+produces: polished_draft
+entrypoint: scripts/run.py
+deterministic: true
+llm_calls: false

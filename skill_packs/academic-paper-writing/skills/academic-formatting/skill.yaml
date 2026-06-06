@@ -1,0 +1,6 @@
+id: academic-formatting
+stage_id: academic_formatting
+produces: formatted_draft
+entrypoint: scripts/run.py
+deterministic: true
+llm_calls: false

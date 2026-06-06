@@ -1,0 +1,6 @@
+id: paper-outline
+stage_id: paper_outline
+produces: outline
+entrypoint: scripts/run.py
+deterministic: true
+llm_calls: false

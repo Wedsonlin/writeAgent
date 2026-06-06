@@ -1,0 +1,6 @@
+id: literature-review
+stage_id: literature_review
+produces: literature_report
+entrypoint: scripts/run.py
+deterministic: true
+llm_calls: false

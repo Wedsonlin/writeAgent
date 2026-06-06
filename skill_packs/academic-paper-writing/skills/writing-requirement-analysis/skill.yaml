@@ -1,0 +1,6 @@
+id: writing-requirement-analysis
+stage_id: requirement_analysis
+produces: writing_task
+entrypoint: scripts/run.py
+deterministic: true
+llm_calls: false

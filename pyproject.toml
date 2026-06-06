@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "writeagent"
-version = "0.1.0"
-description = "论文写作 Agent：基于 LangChain tool-calling ReAct + OpenClaw 兼容 Skill 的双轨架构"
+version = "0.2.0"
+description = "???? Agent??? Deep Agents ???????"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "writeAgent group" }]
 
 [project.scripts]
-writeagent = "agent.cli:app"
+writeagent = "agent_core.runtime:main"
 
 [tool.setuptools.packages.find]
-include = ["agent*"]
-exclude = ["skills*", "case*", "docs*", "schemas*", "tests*", "examples*"]
+include = ["agent_core*", "middleware*", "tools*", "delegation*", "workflows*", "artifacts*", "project_store*", "traces*"]
+exclude = ["skill_packs*", "case*", "tests*"]

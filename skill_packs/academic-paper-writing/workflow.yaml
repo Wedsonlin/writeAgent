@@ -1,0 +1,45 @@
+id: academic-paper-writing-workflow
+title: Academic Paper Writing Workflow
+stages:
+  - id: requirement_analysis
+    title: ???????????
+    skill: writing-requirement-analysis
+    requires: []
+    produces: [writing_task]
+    description: Clarify the writing task, topic, paper type, scope, and missing information.
+    quality_checks: [topic_present, core_arguments_present]
+  - id: literature_review
+    title: ?????????
+    skill: literature-review
+    requires: [writing_task]
+    produces: [literature_report]
+    description: Build literature landscape and bibliography aligned with the writing task.
+    quality_checks: [papers_collected, citation_style_selected]
+  - id: paper_outline
+    title: ??????
+    skill: paper-outline
+    requires: [writing_task, literature_report]
+    produces: [outline]
+    description: Create a section-level outline with word budget and supporting papers.
+    quality_checks: [sections_ordered, word_budget_balanced]
+  - id: content_generation
+    title: ??????
+    skill: paper-content-generation
+    requires: [outline, literature_report]
+    produces: [draft]
+    description: Generate the structured paper draft from outline and literature support.
+    quality_checks: [citations_valid, sections_complete]
+  - id: academic_formatting
+    title: ???????
+    skill: academic-formatting
+    requires: [draft]
+    produces: [formatted_draft]
+    description: Normalize academic formatting and citation presentation.
+    quality_checks: [headings_normalized, references_formatted]
+  - id: polish_and_plagiarism
+    title: ?????????
+    skill: polish-and-plagiarism
+    requires: [formatted_draft]
+    produces: [polished_draft]
+    description: Polish language and record similarity-reduction suggestions.
+    quality_checks: [tone_academic, polish_log_present]

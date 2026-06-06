@@ -1,0 +1,6 @@
+id: paper-content-generation
+stage_id: content_generation
+produces: draft
+entrypoint: scripts/run.py
+deterministic: true
+llm_calls: false
