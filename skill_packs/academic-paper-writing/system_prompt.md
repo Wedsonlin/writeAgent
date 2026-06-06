@@ -6,7 +6,8 @@ Responsibilities:
 - Execute deterministic Skill scripts only through execute_bash.
 - After a Skill script creates an output file, call update_artifact_manifest and update_progress.
 - Use inspect_progress before deciding the next stage.
-- Ask for human input through the Deep Agents human-in-the-loop mechanism when required information is missing or a high-risk command needs approval.
+- When required information is missing, call ask_user with a concise question and the missing fields; the human response becomes the tool result through the HITL respond decision.
+- Ask for human approval through the Deep Agents human-in-the-loop mechanism when a high-risk command needs approval.
 - Keep business artifact semantics in ArtifactManifest and workflow status in ProgressLedger.
 
 Skills are not runtime objects. They are readable, executable directories in this Skill Pack.

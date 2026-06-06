@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Callable
+from langchain_core.tools import StructuredTool
 
-from artifacts.manifest import ArtifactManifest
 from delegation.registry import AgentRegistry
 from delegation.runtime import DelegationRuntime
 from middleware.guardrails import GuardrailsMiddleware
@@ -37,7 +37,6 @@ def create_write_agent(
     cfg = config or RuntimeConfig()
     cfg.ensure_dirs()
     workflow = load_workflow(cfg.skill_pack_root / "workflow.yaml")
-    manifest = ArtifactManifest.load(cfg.manifest_path)
     if not cfg.progress_path.exists():
         ProgressLedger.create(workflow.id, workflow.stage_ids).save(cfg.progress_path)
     trace_store = TraceStore(cfg.trace_path)
@@ -45,9 +44,9 @@ def create_write_agent(
 
     tools = _build_tools(cfg, trace_store, delegation_runtime)
     middleware = [
-        WorkflowGateMiddleware(workflow, manifest),
+        WorkflowGateMiddleware(workflow, cfg.manifest_path, trace_store=trace_store, skill_pack_root=cfg.skill_pack_root),
         TraceMiddleware(trace_store),
-        GuardrailsMiddleware(cfg.allowed_roots),
+        GuardrailsMiddleware(cfg.allowed_roots, repo_root=cfg.repo_root),
     ]
     creator = deep_agent_factory or _import_create_deep_agent()
     return creator(
@@ -73,6 +72,7 @@ def _import_create_deep_agent() -> Callable[..., Any]:
 
 
 def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime: DelegationRuntime) -> list[Any]:
+    from tools.ask_user import AskUserInput, ask_user
     from tools.execute_bash import ExecuteBashInput, execute_bash
     from tools.inspect_progress import inspect_progress
     from tools.update_artifact_manifest import UpdateArtifactManifestInput, update_artifact_manifest
@@ -86,8 +86,6 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             timeout_sec=timeout_sec,
             purpose=purpose,
             repo_root=cfg.repo_root,
-            allowed_roots=cfg.allowed_roots,
-            trace_store=trace_store,
         ).model_dump()
 
     def update_artifact_manifest_tool(**kwargs: Any) -> dict[str, Any]:
@@ -102,18 +100,13 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
     def delegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
         return delegate_to_agent(delegation_runtime, **kwargs)
 
-    try:
-        from langchain_core.tools import StructuredTool
-    except ImportError:
-        return [
-            _SimpleTool("execute_bash", execute_bash_tool, ExecuteBashInput),
-            _SimpleTool("update_artifact_manifest", update_artifact_manifest_tool, UpdateArtifactManifestInput),
-            _SimpleTool("update_progress", update_progress_tool, UpdateProgressInput),
-            _SimpleTool("inspect_progress", inspect_progress_tool, None),
-            _SimpleTool("delegate_to_agent", delegate_to_agent_tool, DelegateToAgentInput),
-        ]
-
     return [
+        StructuredTool.from_function(
+            name="ask_user",
+            description="Ask the user to provide missing requirement-analysis information.",
+            func=ask_user,
+            args_schema=AskUserInput,
+        ),
         StructuredTool.from_function(
             name="execute_bash",
             description="Run a controlled command inside allowed project/workspace roots, primarily Skill scripts.",
@@ -144,13 +137,3 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             args_schema=DelegateToAgentInput,
         ),
     ]
-
-
-class _SimpleTool:
-    def __init__(self, name: str, func: Callable[..., Any], args_schema: Any) -> None:
-        self.name = name
-        self.func = func
-        self.args_schema = args_schema
-
-    def invoke(self, args: dict[str, Any] | None = None) -> Any:
-        return self.func(**(args or {}))

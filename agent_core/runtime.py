@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from typing import Any, Iterable
 
+from langgraph.types import Command
+
 from .config import RuntimeConfig
 from .context import AgentRuntimeContext
 from .factory import create_write_agent
@@ -20,6 +22,7 @@ class WriteAgentRuntime:
             {"messages": [{"role": "user", "content": message}]},
             config={"configurable": {"thread_id": thread_id or context.project_id}},
             context=context,
+            version="v2",
         )
 
     def stream(self, message: str, context: AgentRuntimeContext, *, thread_id: str | None = None) -> Iterable[Any]:
@@ -27,6 +30,15 @@ class WriteAgentRuntime:
             {"messages": [{"role": "user", "content": message}]},
             config={"configurable": {"thread_id": thread_id or context.project_id}},
             context=context,
+            version="v2",
+        )
+
+    def resume(self, resume: Any, context: AgentRuntimeContext, *, thread_id: str | None = None) -> Any:
+        return self.agent.invoke(
+            Command(resume=resume),
+            config={"configurable": {"thread_id": thread_id or context.project_id}},
+            context=context,
+            version="v2",
         )
 
 

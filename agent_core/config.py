@@ -18,7 +18,7 @@ class ModelConfig:
 
     @classmethod
     def from_env(cls) -> "ModelConfig":
-        return cls(model=os.getenv("WRITEAGENT_MODEL") or os.getenv("MODEL") or "openai:gpt-4.1")
+        return cls(model=os.getenv("WRITEAGENT_MODEL") or os.getenv("MODEL") or "openai:gpt-5.4-mini")
 
 
 @dataclass

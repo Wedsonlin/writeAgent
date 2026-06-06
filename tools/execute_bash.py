@@ -10,9 +10,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from agent_core.config import REPO_ROOT
-from middleware.guardrails import check_command
-from project_store.workspace import WorkspaceBoundaryError, resolve_allowed_path
-from traces.store import TraceStore
 
 
 class ExecuteBashInput(BaseModel):
@@ -23,7 +20,7 @@ class ExecuteBashInput(BaseModel):
 
 
 class ExecuteBashResult(BaseModel):
-    status: Literal["ok", "failed", "blocked", "timeout"]
+    status: Literal["ok", "failed", "timeout"]
     exit_code: int | None = None
     stdout: str = ""
     stderr: str = ""
@@ -40,23 +37,13 @@ def execute_bash(
     purpose: str | None = None,
     *,
     repo_root: str | Path = REPO_ROOT,
-    allowed_roots: list[str | Path] | None = None,
-    trace_store: TraceStore | None = None,
 ) -> ExecuteBashResult:
+    """Run a shell command and return structured execution details."""
     repo = Path(repo_root).resolve()
-    roots = [Path(p).resolve() for p in (allowed_roots or [repo])]
-    try:
-        workdir = resolve_allowed_path(cwd, default=repo, allowed_roots=roots)
-    except WorkspaceBoundaryError as exc:
-        result = ExecuteBashResult(status="blocked", stderr=str(exc), cwd=str(repo), command=command)
-        _trace(trace_store, result, purpose)
-        return result
-
-    decision = check_command(command)
-    if not decision.allowed:
-        result = ExecuteBashResult(status="blocked", stderr=decision.reason, cwd=str(workdir), command=command)
-        _trace(trace_store, result, purpose)
-        return result
+    workdir = Path(cwd).expanduser() if cwd is not None else repo
+    if not workdir.is_absolute():
+        workdir = repo / workdir
+    workdir = workdir.resolve()
 
     before = _snapshot(workdir)
     started = time.perf_counter()
@@ -83,7 +70,6 @@ def execute_bash(
             command=command,
             written_files=sorted(_snapshot(workdir) - before),
         )
-        _trace(trace_store, result, purpose)
         return result
 
     duration_ms = int((time.perf_counter() - started) * 1000)
@@ -98,7 +84,6 @@ def execute_bash(
         command=command,
         written_files=sorted(_snapshot(workdir) - before),
     )
-    _trace(trace_store, result, purpose)
     return result
 
 
@@ -106,8 +91,3 @@ def _snapshot(root: Path) -> set[str]:
     if not root.exists():
         return set()
     return {str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()}
-
-
-def _trace(trace_store: TraceStore | None, result: ExecuteBashResult, purpose: str | None) -> None:
-    if trace_store is not None:
-        trace_store.append("execute_bash", status=result.status, payload={**result.model_dump(), "purpose": purpose})

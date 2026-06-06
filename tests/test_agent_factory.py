@@ -29,9 +29,10 @@ def test_agent_factory_builds_deep_agent_with_tools_middleware_and_context(tmp_p
     assert captured["model"] == "fake-model"
     assert captured["context_schema"] is AgentRuntimeContext
     assert {tool.name for tool in captured["tools"]} == {
-        "execute_bash", "update_artifact_manifest", "update_progress", "inspect_progress", "delegate_to_agent"
+        "ask_user", "execute_bash", "update_artifact_manifest", "update_progress", "inspect_progress", "delegate_to_agent"
     }
     assert {mw.name for mw in captured["middleware"]} == {
         "writeagent_workflow_gate", "writeagent_trace", "writeagent_guardrails"
     }
+    assert captured["interrupt_on"]["ask_user"]["allowed_decisions"] == ["respond"]
     assert captured["interrupt_on"]["execute_bash"]["allowed_decisions"] == ["approve", "edit", "reject"]
