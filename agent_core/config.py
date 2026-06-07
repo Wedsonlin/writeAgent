@@ -51,6 +51,11 @@ class RuntimeConfig:
         return self.project_root / "traces" / "trace.jsonl"
 
     @property
+    def agents_config_path(self) -> Path:
+        configured = os.getenv("WRITEAGENT_AGENTS_CONFIG")
+        return Path(configured) if configured else self.repo_root / "config" / "agents.yaml"
+
+    @property
     def allowed_roots(self) -> list[Path]:
         return [self.repo_root, self.workspace_root, self.project_root]
 

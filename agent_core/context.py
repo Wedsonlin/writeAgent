@@ -11,6 +11,11 @@ class AgentRuntimeContext:
 
     The context carries environment and dependency identifiers only. Business
     artifacts live in files plus ArtifactManifest/ProgressLedger, never here.
+
+    Runtime context is per-run configuration you pass when you invoke the agent.
+    It is not automatically included in the model prompt; the model only sees it
+    if a tool, middleware,or other logic reads it and adds it to messages or the
+    system prompt.
     """
 
     user_id: str

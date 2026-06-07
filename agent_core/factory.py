@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any, Callable
 from langchain_core.tools import StructuredTool
 
+from delegation.discovery import AgentDiscovery
 from delegation.registry import AgentRegistry
 from delegation.runtime import DelegationRuntime
 from middleware.guardrails import GuardrailsMiddleware
-from middleware.human_review import build_interrupt_on
 from middleware.trace import TraceMiddleware
 from middleware.workflow_gate import WorkflowGateMiddleware
 from project_store.checkpoint import create_checkpointer
@@ -40,7 +40,12 @@ def create_write_agent(
     if not cfg.progress_path.exists():
         ProgressLedger.create(workflow.id, workflow.stage_ids).save(cfg.progress_path)
     trace_store = TraceStore(cfg.trace_path)
-    delegation_runtime = DelegationRuntime(registry or AgentRegistry(), trace_store=trace_store)
+    discovered_agents = AgentDiscovery.load(
+        cfg.agents_config_path,
+        skill_pack_root=cfg.skill_pack_root,
+        repo_root=cfg.repo_root,
+    )
+    delegation_runtime = DelegationRuntime(registry or discovered_agents.registry, trace_store=trace_store)
 
     tools = _build_tools(cfg, trace_store, delegation_runtime)
     middleware = [
@@ -48,27 +53,67 @@ def create_write_agent(
         TraceMiddleware(trace_store),
         GuardrailsMiddleware(cfg.allowed_roots, repo_root=cfg.repo_root),
     ]
+    selected_model = model if model is not None else cfg.model.model
+    if deep_agent_factory is None:
+        _configure_general_purpose_subagent(selected_model, enabled=not discovered_agents.disable_general_purpose)
     creator = deep_agent_factory or _import_create_deep_agent()
     return creator(
-        model=model if model is not None else cfg.model.model,
+        model=selected_model,
         tools=tools,
         system_prompt=(cfg.skill_pack_root / "system_prompt.md").read_text(encoding="utf-8"),
         middleware=middleware,
+        subagents=discovered_agents.subagents,
         skills=[str(cfg.skill_pack_root / "skills")],
         memory=[str(cfg.skill_pack_root / "references")],
         context_schema=AgentRuntimeContext,
         checkpointer=checkpointer or create_checkpointer(),
-        interrupt_on=build_interrupt_on(),
+        interrupt_on=_build_interrupt_on(),
         name="writeAgent",
     )
 
 
 def _import_create_deep_agent() -> Callable[..., Any]:
+    """
+    create_deep_agent(
+        model: str | BaseChatModel | None = None,
+        tools: Sequence[BaseTool | Callable | dict[str, Any]] | None = None,
+        *,
+        system_prompt: str | SystemMessage | None = None,
+        middleware: Sequence[AgentMiddleware] = (),
+        subagents: Sequence[SubAgent | CompiledSubAgent | AsyncSubAgent] | None = None,
+        skills: list[str] | None = None,
+        memory: list[str] | None = None, # persistent context like AGENTS.md
+        permissions: list[FilesystemPermission] | None = None,
+        backend: BackendProtocol | BackendFactory | None = None,
+        interrupt_on: dict[str, bool | InterruptOnConfig] | None = None,
+        response_format: ... = None,
+        state_schema: type[DeepAgentState] | None = None,
+        context_schema: type[ContextT] | None = None,
+        checkpointer: Checkpointer | None = None,
+        store: BaseStore | None = None,
+        debug: bool = False,
+        name: str | None = None,
+        cache: BaseCache | None = None,
+    ) -> CompiledStateGraph  # return a pre-compiled langgraph graph
+    """
     try:
         from deepagents import create_deep_agent
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("deepagents is required. Install requirements-orchestrator.txt.") from exc
     return create_deep_agent
+
+
+def _configure_general_purpose_subagent(model: Any, *, enabled: bool) -> None:
+    if enabled or not isinstance(model, str):
+        return
+    try:
+        from deepagents import GeneralPurposeSubagentProfile, HarnessProfile, register_harness_profile
+    except ImportError:  # pragma: no cover - optional when tests inject a fake factory
+        return
+    register_harness_profile(
+        model,
+        HarnessProfile(general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)), # disable general purpose subagent
+    )
 
 
 def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime: DelegationRuntime) -> list[Any]:
@@ -86,7 +131,7 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             timeout_sec=timeout_sec,
             purpose=purpose,
             repo_root=cfg.repo_root,
-        ).model_dump()
+        ).model_dump() # model_dump(): BaseModel -> dict
 
     def update_artifact_manifest_tool(**kwargs: Any) -> dict[str, Any]:
         return update_artifact_manifest(cfg.manifest_path, trace_store=trace_store, **kwargs)
@@ -137,3 +182,13 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             args_schema=DelegateToAgentInput,
         ),
     ]
+
+def _build_interrupt_on() -> dict[str, object]:
+    return {
+        "ask_user": {"allowed_decisions": ["respond"]}, # return the human's message directly as the tool result, skipping execution, for "ask user" style tools
+        "execute_bash": {"allowed_decisions": ["approve", "edit", "reject"]},
+        "update_artifact_manifest": False,
+        "update_progress": False,
+        "inspect_progress": False,
+        "delegate_to_agent": False,
+    }

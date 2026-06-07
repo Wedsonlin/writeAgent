@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WritingTask",
+  "type": "object",
+  "required": [
+    "topic",
+    "paper_type",
+    "language",
+    "target_journal",
+    "word_limit",
+    "core_arguments",
+    "innovation_points",
+    "research_scope",
+    "chapter_framework",
+    "references_seed",
+    "missing_info"
+  ],
+  "properties": {
+    "topic": {"type": "string"},
+    "paper_type": {"type": "string"},
+    "language": {"type": "string"},
+    "target_journal": {
+      "type": "object",
+      "required": ["name", "level", "style_profile"],
+      "properties": {
+        "name": {"type": "string"},
+        "level": {"type": "string"},
+        "style_profile": {"type": "object"}
+      }
+    },
+    "word_limit": {
+      "type": "object",
+      "required": ["total", "by_chapter"],
+      "properties": {
+        "total": {"type": "integer"},
+        "by_chapter": {}
+      }
+    },
+    "core_arguments": {"type": "array", "items": {"type": "string"}},
+    "innovation_points": {"type": "array", "items": {"type": "string"}},
+    "research_scope": {"type": "object"},
+    "chapter_framework": {"type": "array", "items": {"type": "object"}},
+    "references_seed": {"type": "array", "items": {"type": "object"}},
+    "missing_info": {"type": "array", "items": {"type": "object"}}
+  },
+  "additionalProperties": true
+}

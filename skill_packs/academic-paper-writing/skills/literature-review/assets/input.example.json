@@ -1,0 +1,64 @@
+{
+  "writing_task": {
+    "topic": "面向学术论文写作的智能 Agent 设计与实现",
+    "paper_type": "system",
+    "language": "zh",
+    "target_journal": {
+      "name": "计算机研究与发展",
+      "level": "CCF-B",
+      "style_profile": {
+        "citation_style": "GB/T 7714",
+        "tone": "formal-zh",
+        "structure_hint": "摘要(中英)-引言-相关工作-方法-实验-讨论-结论-参考文献"
+      }
+    },
+    "word_limit": {"total": 10000, "by_chapter": null},
+    "core_arguments": [
+      "大脑决策 + Skill 工具调用模式可显著降低学术写作门槛",
+      "统一输入输出字段是多 Skill 协作的关键保障",
+      "LangGraph 与 OpenClaw 双轨编排可兼顾本地开发与平台部署"
+    ],
+    "innovation_points": [
+      "提出 LangGraph 编排 + OpenClaw 兼容 Skill 的双轨架构",
+      "以 JSON Schema 作为跨 Skill 契约的统一基线",
+      "针对论文写作场景设计了 6 个层次清晰的 Skill 划分"
+    ],
+    "research_scope": {
+      "domain": "大语言模型 Agent · 学术写作辅助 · 工具编排",
+      "subtopics": ["需求结构化与选题定位", "文献梳理与引用规范"],
+      "boundary": "不讨论模型本身的预训练与微调；不评测查重服务"
+    },
+    "chapter_framework": [],
+    "references_seed": [{"id": "seed-bib", "type": "bibtex", "path": "case/references/seed.bib", "raw": null}],
+    "missing_info": []
+  },
+  "citation_style": "GB/T 7714",
+  "source_map": [
+    {
+      "paper_id": "yao2022react",
+      "research_question": "如何让语言模型在推理过程中执行外部动作。",
+      "core_method": "交替生成 reasoning traces 与 task-specific actions。",
+      "main_finding": "ReAct 将推理与行动结合，为 LLM Agent 工具调用提供基础范式。",
+      "key_claims": ["提出了推理与行动交替的 LLM Agent 范式。"],
+      "evidence_strength": "moderate",
+      "limitations": [],
+      "alignment_to_core": [{"core_argument_index": 0, "stance": "supports", "note": "支撑大脑决策 + 工具调用模式。"}],
+      "provenance": {"main_finding": "abstract"}
+    }
+  ],
+  "landscape": {
+    "keywords": ["大语言模型 Agent", "工具编排"],
+    "clusters": [
+      {
+        "name": "LLM 智能体架构与工具调用",
+        "summary": "围绕 ReAct、工具调用、多步规划等核心机制。",
+        "paper_ids": ["yao2022react"]
+      }
+    ],
+    "consensus": ["工具调用与多步规划是 LLM 智能体的核心能力。"],
+    "controversies": ["Agent 应使用紧耦合内置工具，还是开放可扩展 Skill？"],
+    "research_gaps": ["面向学术写作场景的端到端 Agent 系统尚不成熟。"],
+    "timeline_summary": "2022 年 ReAct 推动工具增强范式，随后 Skill 化机制提升可复用性。"
+  },
+  "extra_references": []
+}

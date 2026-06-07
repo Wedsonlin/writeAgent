@@ -11,7 +11,7 @@ class AgentRegistration:
     agent_id: str
     capabilities: list[str]
     backend: Literal["local", "remote_a2a"] = "local"
-    handle: Any = None
+    handle: Any = None # agent callable function
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

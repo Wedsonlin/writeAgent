@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from delegation.a2a_client import A2AHttpClient
 from delegation.schema import DelegationRequest, DelegationResult
 
 
@@ -18,7 +19,7 @@ class RemoteA2AAdapter:
         self.client = client
 
     def invoke(self, handle: Any, request: DelegationRequest) -> DelegationResult:
-        client = handle or self.client
+        client = self._resolve_client(handle)
         if client is None:
             return DelegationResult(status="blocked", summary="No official A2A client configured.")
         raw = client.send(request.model_dump()) if hasattr(client, "send") else client(request.model_dump())
@@ -27,3 +28,11 @@ class RemoteA2AAdapter:
         if isinstance(raw, dict):
             return DelegationResult.model_validate(raw)
         return DelegationResult(status="failed", summary="Remote A2A client returned an unsupported response.")
+
+    def _resolve_client(self, handle: Any) -> Any:
+        client = handle or self.client
+        if isinstance(client, str):
+            return A2AHttpClient(client)
+        if isinstance(client, dict) and client.get("endpoint"):
+            return A2AHttpClient(str(client["endpoint"]))
+        return client

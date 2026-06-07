@@ -28,6 +28,14 @@ def test_agent_factory_builds_deep_agent_with_tools_middleware_and_context(tmp_p
     assert agent == {"agent": "fake"}
     assert captured["model"] == "fake-model"
     assert captured["context_schema"] is AgentRuntimeContext
+    assert {subagent["name"] for subagent in captured["subagents"]} == {
+        "requirement-analysis-agent",
+        "literature-review-agent",
+        "paper-outline-agent",
+        "content-generation-agent",
+        "academic-formatting-agent",
+        "polish-plagiarism-agent",
+    }
     assert {tool.name for tool in captured["tools"]} == {
         "ask_user", "execute_bash", "update_artifact_manifest", "update_progress", "inspect_progress", "delegate_to_agent"
     }

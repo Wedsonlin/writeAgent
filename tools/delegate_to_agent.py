@@ -24,5 +24,5 @@ class DelegateToAgentInput(BaseModel):
 
 
 def delegate_to_agent(runtime: DelegationRuntime, **kwargs: Any) -> dict[str, Any]:
-    request = DelegationRequest.model_validate(kwargs)
+    request = DelegationRequest.model_validate(kwargs) # align the input kwargs to the DelegationRequest schema
     return runtime.delegate(request).model_dump()

@@ -1,0 +1,66 @@
+{
+  "user_request": "高级人工智能课程论文写作 Agent 与 Skill 设计作业。",
+  "argument_brief": {
+    "topic": "面向学术论文写作的智能 Agent 设计与实现",
+    "problem": {
+      "actor": "需要完成课程论文或科研写作的学生与研究者",
+      "failure_mode": "写作需求、文献梳理、大纲和正文生成常分散在不同工具中，难以形成可追踪流程。",
+      "root_cause": "缺少统一 artifact 契约和可复用 Skill 工作流。"
+    },
+    "gap": {
+      "prior_assumptions": [
+        "通用聊天式写作助手可以通过上下文长期保持任务状态。",
+        "单个写作工具可以覆盖需求分析、文献梳理、正文生成和格式审查。"
+      ],
+      "type": "structural"
+    },
+    "core_claim": "本文表明，大脑决策与 Skill 工具调用结合的架构可以降低学术论文写作门槛，并通过统一 JSON 契约稳定串联多阶段工作流。",
+    "contribution_name": "双轨 Skill 架构",
+    "core_arguments": [
+      "大脑决策 + Skill 工具调用模式可显著降低学术写作门槛",
+      "统一输入输出字段是多 Skill 协作的关键保障",
+      "LangGraph 与 OpenClaw 双轨编排可兼顾本地开发与平台部署"
+    ],
+    "contributions": [
+      "提出 LangGraph 编排 + OpenClaw 兼容 Skill 的双轨架构",
+      "以 JSON Schema 作为跨 Skill 契约的统一基线",
+      "针对论文写作场景设计了 6 个层次清晰的 Skill 划分"
+    ],
+    "venue": {
+      "paper_type": "system",
+      "journal": "计算机研究与发展",
+      "level": "CCF-B",
+      "word_limit": 10000,
+      "language": "zh"
+    },
+    "scope": {
+      "domain": "大语言模型 Agent · 学术写作辅助 · 工具编排",
+      "subtopics": [
+        "需求结构化与选题定位",
+        "文献梳理与引用规范",
+        "大纲生成与正文撰写",
+        "格式校验与语言润色"
+      ],
+      "boundary": "不讨论模型本身的预训练与微调；不评测查重服务"
+    },
+    "section_plan": [
+      {"chapter_id": "1", "title": "引言", "key_points": ["背景", "面临的挑战", "本文贡献"], "word_budget": 800, "depends_on": null},
+      {"chapter_id": "2", "title": "相关工作", "key_points": ["既有系统综述与对比"], "word_budget": 1000, "depends_on": null},
+      {"chapter_id": "3", "title": "系统设计", "key_points": ["总体架构", "核心模块", "数据流"], "word_budget": 2000, "depends_on": null},
+      {"chapter_id": "4", "title": "关键技术实现", "key_points": ["核心算法", "工程优化"], "word_budget": 2200, "depends_on": null},
+      {"chapter_id": "5", "title": "实验与评测", "key_points": ["实验设置", "性能与效果"], "word_budget": 1500, "depends_on": null},
+      {"chapter_id": "6", "title": "案例应用", "key_points": ["典型案例与效果展示"], "word_budget": 1200, "depends_on": null},
+      {"chapter_id": "7", "title": "讨论", "key_points": ["局限与改进方向"], "word_budget": 800, "depends_on": null},
+      {"chapter_id": "8", "title": "结论", "key_points": ["总结", "未来工作"], "word_budget": 500, "depends_on": null}
+    ],
+    "narrative_spine": "学术论文写作需要在需求澄清、文献梳理、正文生成和格式审查之间保持一致状态。现有通用写作助手缺少稳定的跨阶段契约。本文提出双轨 Skill 架构，将 Agent 决策与确定性 Skill 脚本分离，并用 JSON artifact 串联全流程。"
+  },
+  "references_seed": [
+    {"id": "seed-bib", "type": "bibtex", "path": "case/references/seed.bib", "raw": null}
+  ],
+  "provenance": {
+    "core_claim": "用户确认",
+    "word_limit": "原文/已有数据",
+    "references_seed": "原文/已有数据"
+  }
+}

@@ -1,0 +1,69 @@
+version: 1
+disable_general_purpose: true
+
+agents:
+  - id: requirement-analysis
+    routing: subagent
+    capability: requirement_analysis
+    stage_id: requirement_analysis
+    subagent:
+      name: requirement-analysis-agent
+      description: Analyze writing requirements and produce the writing_task artifact.
+      prompt_file: config/agent_prompts/requirement-analysis.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/writing-requirement-analysis
+
+  - id: literature-review
+    routing: subagent
+    capability: literature_review
+    stage_id: literature_review
+    subagent:
+      name: literature-review-agent
+      description: Build the literature landscape and produce the literature_report artifact.
+      prompt_file: config/agent_prompts/literature-review.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/literature-review
+
+  - id: paper-outline
+    routing: subagent
+    capability: paper_outline
+    stage_id: paper_outline
+    subagent:
+      name: paper-outline-agent
+      description: Design the paper outline and produce the outline artifact.
+      prompt_file: config/agent_prompts/paper-outline.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/paper-outline
+
+  - id: content-generation
+    routing: subagent
+    capability: content_generation
+    stage_id: content_generation
+    subagent:
+      name: content-generation-agent
+      description: Generate section-level paper draft content and produce the draft artifact.
+      prompt_file: config/agent_prompts/content-generation.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/paper-content-generation
+
+  - id: academic-formatting
+    routing: subagent
+    capability: academic_formatting
+    stage_id: academic_formatting
+    subagent:
+      name: academic-formatting-agent
+      description: Normalize academic formatting and produce the formatted_draft artifact.
+      prompt_file: config/agent_prompts/academic-formatting.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/academic-formatting
+
+  - id: polish-plagiarism
+    routing: subagent
+    capability: polish_and_plagiarism
+    stage_id: polish_and_plagiarism
+    subagent:
+      name: polish-plagiarism-agent
+      description: Polish language, prepare similarity-reduction suggestions, and produce the polished_draft artifact.
+      prompt_file: config/agent_prompts/polish-plagiarism.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/polish-and-plagiarism

@@ -1,3 +1,79 @@
 {
-  "type": "object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LiteratureReport",
+  "type": "object",
+  "required": [
+    "keywords",
+    "papers",
+    "research_landscape",
+    "consensus",
+    "controversies",
+    "research_gaps",
+    "citation_style",
+    "formatted_bibliography"
+  ],
+  "properties": {
+    "keywords": {"type": "array", "items": {"type": "string"}},
+    "papers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "title", "authors", "year", "venue", "key_claims", "evidence_strength", "alignment_to_core", "source_kind"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "title": {"type": "string"},
+          "authors": {"type": "array", "items": {"type": "string"}},
+          "year": {"type": ["integer", "null"]},
+          "venue": {"type": "string"},
+          "doi": {"type": ["string", "null"]},
+          "url": {"type": ["string", "null"]},
+          "abstract": {"type": "string"},
+          "key_claims": {"type": "array", "items": {"type": "string"}},
+          "evidence_strength": {"type": "string", "enum": ["strong", "moderate", "weak"]},
+          "alignment_to_core": {"type": "array", "items": {"type": "object"}},
+          "source_kind": {"type": "string"},
+          "limitations": {"type": "array"},
+          "provenance": {"type": "object"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "research_landscape": {
+      "type": "object",
+      "required": ["clusters", "timeline_summary"],
+      "properties": {
+        "clusters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "summary", "paper_ids"],
+            "properties": {
+              "name": {"type": "string"},
+              "summary": {"type": "string"},
+              "paper_ids": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": true
+          }
+        },
+        "timeline_summary": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "consensus": {"type": "array", "items": {"type": "string"}},
+    "controversies": {"type": "array", "items": {"type": "string"}},
+    "research_gaps": {"type": "array", "items": {"type": "string"}},
+    "citation_style": {"type": "string"},
+    "formatted_bibliography": {
+      "type": "object",
+      "required": ["gb7714", "apa"],
+      "properties": {
+        "gb7714": {"type": "array", "items": {"type": "string"}},
+        "apa": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "unmapped_papers": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
 }

@@ -1,0 +1,13 @@
+profiles:
+  - match:
+      name_contains: 计算机研究与发展
+    style_profile:
+      citation_style: GB/T 7714
+      tone: formal-zh
+      structure_hint: 摘要(中英)-引言-相关工作-方法-实验-讨论-结论-参考文献
+  - match:
+      level_prefix: CCF
+    style_profile:
+      citation_style: GB/T 7714
+      tone: formal-zh
+      structure_hint: 摘要-引言-相关工作-方法-实验-讨论-结论-参考文献

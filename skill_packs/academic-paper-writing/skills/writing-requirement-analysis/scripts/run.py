@@ -4,30 +4,18 @@ import argparse
 import json
 from pathlib import Path
 
+from contract_builder import ContractError, build_writing_task_payload
+
 
 def main() -> int:
     args = _parse()
-    data = _load(args.input)
-    text = data.get("user_request") or data.get("request") or data.get("topic") or "?????"
-    task = {
-        "topic": data.get("topic") or _first_line(text),
-        "paper_type": data.get("paper_type", "survey"),
-        "language": data.get("language", "zh"),
-        "target_journal": data.get("target_journal", {"name": "???", "level": "???", "style_profile": {"citation_style": data.get("citation_style", "GB/T 7714")}}),
-        "word_limit": data.get("word_limit", {"total": 8000}),
-        "core_arguments": data.get("core_arguments") or ["????????????????????"],
-        "innovation_points": data.get("innovation_points") or [],
-        "research_scope": data.get("research_scope", {"domain": "????", "subtopics": []}),
-        "chapter_framework": data.get("chapter_framework") or [
-            {"chapter_id": "1", "title": "??", "key_points": ["????", "????"], "word_budget": 1000},
-            {"chapter_id": "2", "title": "????", "key_points": ["????", "????"], "word_budget": 2000},
-            {"chapter_id": "3", "title": "?????", "key_points": ["????", "?????"], "word_budget": 3500},
-            {"chapter_id": "4", "title": "??", "key_points": ["??", "????"], "word_budget": 1000},
-        ],
-        "references_seed": data.get("references_seed", []),
-        "missing_info": [],
-    }
-    _write(args.output, {"artifact_type": "writing_task", "writing_task": task})
+    try:
+        payload = build_writing_task_payload(_load(args.input))
+    except ContractError as exc:
+        _write_error(args.output, exc)
+        return 1
+
+    _write(args.output, payload)
     return 0
 
 
@@ -48,8 +36,12 @@ def _write(path: str, payload: dict) -> None:
     p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _first_line(text: str) -> str:
-    return next((line.strip() for line in text.splitlines() if line.strip()), "?????")[:120]
+def _write_error(path: str, exc: ContractError) -> None:
+    payload = {
+        "artifact_type": "writing_task",
+        "error": {"message": str(exc), "missing_fields": exc.missing_fields},
+    }
+    _write(path, payload)
 
 
 if __name__ == "__main__":

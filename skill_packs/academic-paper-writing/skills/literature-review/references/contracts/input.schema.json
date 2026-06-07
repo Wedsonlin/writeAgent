@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LiteratureReviewInput",
+  "type": "object",
+  "required": ["writing_task", "source_map", "landscape"],
+  "properties": {
+    "writing_task": {"type": "object"},
+    "citation_style": {"type": "string"},
+    "source_map": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["paper_id"],
+        "properties": {
+          "paper_id": {"type": "string"},
+          "research_question": {"type": "string"},
+          "core_method": {"type": "string"},
+          "main_finding": {"type": "string"},
+          "key_claims": {"type": "array", "items": {"type": "string"}},
+          "evidence_strength": {"type": "string"},
+          "limitations": {"type": "array"},
+          "alignment_to_core": {"type": "array"},
+          "provenance": {"type": "object"}
+        }
+      }
+    },
+    "landscape": {
+      "type": "object",
+      "required": ["clusters"],
+      "properties": {
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "clusters": {"type": "array", "items": {"type": "object"}},
+        "consensus": {"type": "array", "items": {"type": "string"}},
+        "controversies": {"type": "array", "items": {"type": "string"}},
+        "research_gaps": {"type": "array", "items": {"type": "string"}},
+        "timeline_summary": {"type": "string"}
+      }
+    },
+    "extra_references": {"type": "array"}
+  },
+  "additionalProperties": true
+}

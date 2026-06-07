@@ -4,38 +4,24 @@ import argparse
 import json
 from pathlib import Path
 
+from cite import format_bibliography
+from ingest import ingest_references
+from merge import build_literature_report
+from validate import ContractError, validate_report_input
+
 
 def main() -> int:
     args = _parse()
     data = _load(args.input)
-    task = data.get("writing_task", data)
-    seeds = task.get("references_seed", []) if isinstance(task, dict) else []
-    papers = [
-        {
-            "id": item.get("id", f"seed-{idx+1}"),
-            "type": item.get("type", "misc"),
-            "title": item.get("raw") or item.get("path") or f"Reference {idx+1}",
-            "authors": item.get("authors", []),
-            "year": item.get("year"),
-            "venue": item.get("venue", ""),
-            "key_claims": item.get("key_claims", []),
-            "evidence_strength": item.get("evidence_strength", "weak"),
-            "alignment_to_core": [],
-            "source_kind": item.get("type", "seed"),
-        }
-        for idx, item in enumerate(seeds)
-        if isinstance(item, dict)
-    ]
-    report = {
-        "keywords": [task.get("topic", "academic writing")] if isinstance(task, dict) else ["academic writing"],
-        "papers": papers,
-        "research_landscape": {"clusters": [], "timeline_summary": "?????????"},
-        "consensus": [],
-        "controversies": [],
-        "research_gaps": [],
-        "citation_style": data.get("citation_style") or "GB/T 7714",
-        "formatted_bibliography": {"gb7714": [], "apa": []},
-    }
+    try:
+        validate_report_input(data)
+        papers = ingest_references(data, Path(args.input).resolve().parent)
+        bibliography = format_bibliography(papers)
+        report = build_literature_report(data, papers, bibliography)
+    except ContractError as exc:
+        _write(args.output, {"artifact_type": "literature_report", "error": {"message": str(exc), "fields": exc.fields}})
+        return 1
+
     _write(args.output, {"artifact_type": "literature_report", "literature_report": report})
     return 0
 

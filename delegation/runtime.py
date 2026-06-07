@@ -28,7 +28,7 @@ class DelegationRuntime:
         if registration is None:
             result = DelegationResult(status="blocked", summary=f"No agent can satisfy capability: {request.capability}")
         else:
-            adapter = self.adapters.get(registration.backend)
+            adapter = self.adapters.get(registration.backend) # select the appropriate adapter based on the agent backend "local" or "remote_a2a"
             if adapter is None:
                 result = DelegationResult(status="failed", summary=f"No adapter for backend: {registration.backend}")
             else:

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WritingRequirementAnalysisInput",
+  "type": "object",
+  "required": ["argument_brief"],
+  "properties": {
+    "user_request": {"type": "string"},
+    "argument_brief": {
+      "type": "object",
+      "required": ["core_claim", "contributions", "venue"],
+      "properties": {
+        "topic": {"type": "string"},
+        "problem": {"type": "object"},
+        "gap": {"type": "object"},
+        "core_claim": {"type": "string"},
+        "contribution_name": {"type": "string"},
+        "core_arguments": {"type": "array", "items": {"type": "string"}},
+        "contributions": {"type": "array", "items": {"type": "string"}},
+        "innovation_points": {"type": "array", "items": {"type": "string"}},
+        "venue": {
+          "type": "object",
+          "required": ["paper_type", "journal"],
+          "properties": {
+            "paper_type": {"type": "string"},
+            "journal": {"type": "string"},
+            "level": {"type": "string"},
+            "word_limit": {},
+            "language": {"type": "string"},
+            "style_profile": {"type": "object"}
+          }
+        },
+        "scope": {"type": "object"},
+        "section_plan": {"type": "array", "items": {"type": "object"}},
+        "narrative_spine": {"type": "string"},
+        "evidence_plan": {"type": "array"}
+      }
+    },
+    "references_seed": {"type": "array", "items": {"type": "object"}},
+    "provenance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

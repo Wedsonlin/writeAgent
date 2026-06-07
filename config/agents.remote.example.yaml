@@ -1,0 +1,13 @@
+version: 1
+disable_general_purpose: true
+
+agents:
+  - id: remote-literature-review
+    routing: delegation
+    capability: literature_review
+    stage_id: literature_review
+    backend: remote_a2a
+    endpoint: https://lobster.example/a2a/literature-review
+    metadata:
+      a2a_version: "0.1"
+      platform: lobster
