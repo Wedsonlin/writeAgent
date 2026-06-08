@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 from artifacts.manifest import ArtifactManifest
@@ -58,6 +59,30 @@ def test_workflow_gate_middleware_blocks_skill_when_required_artifacts_are_missi
     assert payload["next_recommended_stage"] == "requirement_analysis"
 
 
+def test_workflow_gate_middleware_async_blocks_skill_when_required_artifacts_are_missing(tmp_path):
+    workflow = load_workflow("skill_packs/academic-paper-writing/workflow.yaml")
+    manifest_path = tmp_path / "manifest.json"
+    gate = WorkflowGateMiddleware(workflow, manifest_path)
+    called = False
+
+    async def handler(request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = asyncio.run(
+        gate.awrap_tool_call(
+            FakeToolRequest("python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py"),
+            handler,
+        )
+    )
+
+    payload = json.loads(result.content)
+    assert called is False
+    assert payload["status"] == "blocked"
+    assert payload["skill_name"] == "literature-review"
+
+
 def test_workflow_gate_middleware_allows_skill_when_required_artifacts_exist(tmp_path):
     workflow = load_workflow("skill_packs/academic-paper-writing/workflow.yaml")
     manifest_path = tmp_path / "manifest.json"
@@ -74,6 +99,30 @@ def test_workflow_gate_middleware_allows_skill_when_required_artifacts_exist(tmp
     result = gate.wrap_tool_call(
         FakeToolRequest("python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py"),
         handler,
+    )
+
+    assert called is True
+    assert result == {"status": "ok"}
+
+
+def test_workflow_gate_middleware_async_allows_skill_when_required_artifacts_exist(tmp_path):
+    workflow = load_workflow("skill_packs/academic-paper-writing/workflow.yaml")
+    manifest_path = tmp_path / "manifest.json"
+    manifest = ArtifactManifest.load(manifest_path)
+    manifest.upsert(ArtifactMeta(artifact_id="task", artifact_type="writing_task", path="task.json"))
+    gate = WorkflowGateMiddleware(workflow, manifest_path)
+    called = False
+
+    async def handler(request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = asyncio.run(
+        gate.awrap_tool_call(
+            FakeToolRequest("python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py"),
+            handler,
+        )
     )
 
     assert called is True

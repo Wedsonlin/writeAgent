@@ -2,6 +2,9 @@
 
 deepagents
 langgraph>=1.0.0
+langgraph-cli[inmem]
 langchain-core>=1.0.0
 langchain-openai
+httpx[socks]
+fastapi
 pytest

@@ -25,6 +25,16 @@ def _context() -> AgentRuntimeContext:
     )
 
 
+def test_runtime_context_has_frontend_defaults():
+    context = AgentRuntimeContext()
+
+    assert context.user_id == "frontend-user"
+    assert context.workspace_id == "local"
+    assert context.project_id == "default"
+    assert context.skill_pack_id == "academic-paper-writing"
+    assert context.artifact_root == ".writeagent/projects/default/artifacts"
+
+
 def test_runtime_invoke_uses_thread_id_and_v2_interrupt_output():
     agent = FakeAgent()
     runtime = WriteAgentRuntime(agent=agent)

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 from langchain.agents.middleware import AgentMiddleware, ToolCallRequest
 from langchain_core.messages import ToolMessage
+from langgraph.errors import GraphBubbleUp
 from langgraph.types import Command
 from traces.store import TraceStore
 
@@ -27,6 +28,37 @@ class TraceMiddleware(AgentMiddleware):
         args = request.tool_call["args"]
         try:
             result = handler(request)
+        except GraphBubbleUp:
+            raise
+        except Exception as exc:
+            self.record_tool(
+                tool_name,
+                "failed",
+                {
+                    "args": args,
+                    "error": str(exc),
+                    "error_type": exc.__class__.__name__,
+                },
+            )
+            return ToolMessage(
+                content=f"Tool '{tool_name}' failed: {exc}",
+                tool_call_id=request.tool_call["id"],
+            )
+
+        self.record_tool(tool_name, "success", {"args": args, "result": _serialize_result(result)})
+        return result
+
+    async def awrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command]],
+    ) -> ToolMessage | Command:
+        tool_name = request.tool_call["name"]
+        args = request.tool_call["args"]
+        try:
+            result = await handler(request)
+        except GraphBubbleUp:
+            raise
         except Exception as exc:
             self.record_tool(
                 tool_name,

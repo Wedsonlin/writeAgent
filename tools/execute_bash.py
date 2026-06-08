@@ -10,6 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from agent_core.config import REPO_ROOT
+from project_store.workspace import resolve_allowed_path
 
 
 class ExecuteBashInput(BaseModel):
@@ -40,10 +41,8 @@ def execute_bash(
 ) -> ExecuteBashResult:
     """Run a shell command and return structured execution details."""
     repo = Path(repo_root).resolve()
-    workdir = Path(cwd).expanduser() if cwd is not None else repo
-    if not workdir.is_absolute():
-        workdir = repo / workdir
-    workdir = workdir.resolve()
+    workdir = resolve_allowed_path(cwd, default=repo, allowed_roots=[repo])
+    command = _normalize_virtual_command_paths(command)
 
     before = _snapshot(workdir)
     started = time.perf_counter()
@@ -91,3 +90,15 @@ def _snapshot(root: Path) -> set[str]:
     if not root.exists():
         return set()
     return {str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()}
+
+
+def _normalize_virtual_command_paths(command: str) -> str:
+    replacements = {
+        "/skill_packs/": "skill_packs/",
+        "/.writeagent/": ".writeagent/",
+        "/case/": "case/",
+    }
+    normalized = command
+    for virtual_prefix, local_prefix in replacements.items():
+        normalized = normalized.replace(virtual_prefix, local_prefix)
+    return normalized

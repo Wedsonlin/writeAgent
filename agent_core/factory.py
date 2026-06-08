@@ -21,12 +21,15 @@ from .config import RuntimeConfig
 from .context import AgentRuntimeContext
 
 
+_CHECKPOINTER_DEFAULT = object()
+
+
 def create_write_agent(
     config: RuntimeConfig | None = None,
     *,
     deep_agent_factory: Callable[..., Any] | None = None,
     model: Any | None = None,
-    checkpointer: Any | None = None,
+    checkpointer: Any = _CHECKPOINTER_DEFAULT,
     registry: AgentRegistry | None = None,
 ) -> Any:
     """Create the main writeAgent Deep Agent.
@@ -57,6 +60,7 @@ def create_write_agent(
     if deep_agent_factory is None:
         _configure_general_purpose_subagent(selected_model, enabled=not discovered_agents.disable_general_purpose)
     creator = deep_agent_factory or _import_create_deep_agent()
+    selected_checkpointer = create_checkpointer() if checkpointer is _CHECKPOINTER_DEFAULT else checkpointer
     return creator(
         model=selected_model,
         tools=tools,
@@ -64,9 +68,11 @@ def create_write_agent(
         middleware=middleware,
         subagents=discovered_agents.subagents,
         skills=[str(cfg.skill_pack_root / "skills")],
-        memory=[str(cfg.skill_pack_root / "references")],
+        memory=_build_memory_sources(cfg),
+        permissions=_build_filesystem_permissions(),
+        backend=_build_filesystem_backend(cfg),
         context_schema=AgentRuntimeContext,
-        checkpointer=checkpointer or create_checkpointer(),
+        checkpointer=selected_checkpointer,
         interrupt_on=_build_interrupt_on(),
         name="writeAgent",
     )
@@ -192,3 +198,33 @@ def _build_interrupt_on() -> dict[str, object]:
         "inspect_progress": False,
         "delegate_to_agent": False,
     }
+
+
+def _build_filesystem_backend(cfg: RuntimeConfig) -> Any:
+    from deepagents.backends import FilesystemBackend
+
+    return FilesystemBackend(root_dir=cfg.repo_root, virtual_mode=True)
+
+
+def _build_filesystem_permissions() -> list[Any]:
+    from deepagents.middleware.filesystem import FilesystemPermission
+
+    return [
+        FilesystemPermission(operations=["read"], paths=["/.env", "/.env.*"], mode="deny"),
+        FilesystemPermission(
+            operations=["write"],
+            paths=[
+                "/.writeagent/projects/default/artifacts",
+                "/.writeagent/projects/default/artifacts/**",
+            ],
+            mode="allow",
+        ),
+        FilesystemPermission(operations=["write"], paths=["/**"], mode="deny"),
+    ]
+
+
+def _build_memory_sources(cfg: RuntimeConfig) -> list[str]:
+    references_root = cfg.skill_pack_root / "references"
+    if not references_root.exists():
+        return []
+    return [str(path) for path in sorted(references_root.rglob("*")) if path.is_file()]

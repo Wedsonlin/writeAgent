@@ -15,5 +15,5 @@ authors = [{ name = "writeAgent group" }]
 writeagent = "agent_core.runtime:main"
 
 [tool.setuptools.packages.find]
-include = ["agent_core*", "middleware*", "tools*", "delegation*", "workflows*", "artifacts*", "project_store*", "traces*"]
+include = ["agent_core*", "middleware*", "tools*", "delegation*", "workflows*", "artifacts*", "project_store*", "traces*", "server*"]
 exclude = ["skill_packs*", "case*", "tests*"]

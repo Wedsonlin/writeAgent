@@ -18,10 +18,10 @@ class AgentRuntimeContext:
     system prompt.
     """
 
-    user_id: str
-    workspace_id: str
-    project_id: str
-    skill_pack_id: str
-    artifact_root: str
+    user_id: str = "frontend-user"
+    workspace_id: str = "local"
+    project_id: str = "default"
+    skill_pack_id: str = "academic-paper-writing"
+    artifact_root: str = ".writeagent/projects/default/artifacts"
     locale: str = "zh-CN"
     citation_style: str = "GB/T 7714"

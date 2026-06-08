@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from langchain.agents.middleware import AgentMiddleware
 
@@ -58,6 +58,31 @@ class WorkflowGateMiddleware(AgentMiddleware):
         if decision.status == "allowed":
             self._trace("workflow_gate_allowed", "allowed", payload)
             return handler(request)
+
+        self._trace("workflow_gate_blocked", "blocked", payload)
+        return _blocked_tool_message(request, skill_name, command, decision)
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+        if _request_name(request) != "execute_bash":
+            return await handler(request)
+
+        args = _request_args(request)
+        command = str(args.get("command", ""))
+        cwd = args.get("cwd")
+        skill_name = self._infer_skill_name(command, cwd)
+        if skill_name is None:
+            return await handler(request)
+
+        decision = self.evaluate_skill(skill_name)
+        payload = {
+            "skill_name": skill_name,
+            "command": command,
+            "cwd": cwd,
+            "decision": decision.model_dump(),
+        }
+        if decision.status == "allowed":
+            self._trace("workflow_gate_allowed", "allowed", payload)
+            return await handler(request)
 
         self._trace("workflow_gate_blocked", "blocked", payload)
         return _blocked_tool_message(request, skill_name, command, decision)

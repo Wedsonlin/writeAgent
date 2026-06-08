@@ -6,9 +6,13 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SKILL_PACK_ID = "academic-paper-writing"
+
+load_dotenv(REPO_ROOT / ".env", override=True)
 
 
 @dataclass
@@ -18,7 +22,28 @@ class ModelConfig:
 
     @classmethod
     def from_env(cls) -> "ModelConfig":
-        return cls(model=os.getenv("WRITEAGENT_MODEL") or os.getenv("MODEL") or "openai:gpt-5.4-mini")
+        temperature = float(os.getenv("WRITEAGENT_TEMPERATURE", "0.2"))
+        model = os.getenv("WRITEAGENT_MODEL") or os.getenv("MODEL") or "openai:gpt-5.4-mini"
+        api_key = os.getenv("WRITEAGENT_LLM_API_KEY")
+        base_url = os.getenv("WRITEAGENT_LLM_BASE_URL")
+        if api_key or base_url:
+            return cls(model=_openai_compatible_model(model, api_key=api_key, base_url=base_url, temperature=temperature))
+        return cls(model=model, temperature=temperature)
+
+
+def _openai_compatible_model(model: str, *, api_key: str | None, base_url: str | None, temperature: float) -> object:
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("langchain-openai is required for WRITEAGENT_LLM_* configuration.") from exc
+
+    model_name = model.removeprefix("openai:")
+    kwargs: dict[str, object] = {"model": model_name, "temperature": temperature}
+    if api_key:
+        kwargs["api_key"] = api_key
+    if base_url:
+        kwargs["base_url"] = base_url
+    return ChatOpenAI(**kwargs)
 
 
 @dataclass

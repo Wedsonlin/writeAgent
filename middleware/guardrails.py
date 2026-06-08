@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Callable
+from typing import Awaitable, Callable
 
 from langchain.agents.middleware import AgentMiddleware
 from langchain.messages import ToolMessage
@@ -32,7 +32,7 @@ HIGH_RISK_PATTERNS = [r"\bgit\s+push\b", r"\bpip\s+install\b", r"\bnpm\s+install
 _ARG_PATTERN = r"""(?:[^\s;&|`$<>]+|"[^"&|`$<>]*"|'[^'&|`$<>]*')"""
 ALLOWED_COMMAND_PATTERNS = [
     re.compile(
-        rf"""^\s*(?:python|python3|py)(?:\.exe)?\s+["']?skill_packs[\\/][^"'\s]+[\\/]skills[\\/][^"'\s\\/]+[\\/]scripts[\\/]run\.py["']?(?:\s+{_ARG_PATTERN})*\s*$""",
+        rf"""^\s*(?:python|python3|py)(?:\.exe)?\s+["']?[\\/]?skill_packs[\\/][^"'\s]+[\\/]skills[\\/][^"'\s\\/]+[\\/]scripts[\\/]run\.py["']?(?:\s+{_ARG_PATTERN})*\s*$""",
         flags=re.IGNORECASE,
     )
 ]
@@ -82,6 +82,32 @@ class GuardrailsMiddleware(AgentMiddleware):
         decision = self._check_execute_bash(command, cwd)
         if decision.allowed:
             return handler(request)
+
+        payload = {
+            "status": "blocked",
+            "reason": decision.reason,
+            "command": command,
+            "cwd": cwd,
+        }
+        return ToolMessage(
+            content=json.dumps(payload, ensure_ascii=False),
+            tool_call_id=request.tool_call["id"],
+        )
+
+    async def awrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command]],
+    ) -> ToolMessage | Command:
+        if request.tool_call["name"] != "execute_bash":
+            return await handler(request)
+
+        args = request.tool_call["args"]
+        command = str(args.get("command", ""))
+        cwd = args.get("cwd")
+        decision = self._check_execute_bash(command, cwd)
+        if decision.allowed:
+            return await handler(request)
 
         payload = {
             "status": "blocked",

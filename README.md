@@ -11,12 +11,46 @@ python -m pip install -r requirements-orchestrator.txt
 writeagent "????? AI ??????????????"
 ```
 
-The local CLI invokes `agent_core.runtime.WriteAgentRuntime`. There is no deployment server in this repository.
+The local CLI invokes `agent_core.runtime.WriteAgentRuntime`.
+
+## Frontend Development
+
+Phase 1 includes a local LangGraph API server plus a React/Vite frontend for monitoring the Deep Agents workflow.
+
+Install Python dependencies in the `writeagent` environment:
+
+```powershell
+conda run -n writeagent python -m pip install -r requirements-orchestrator.txt
+```
+
+Create `.env` from `.env.example` and fill the model provider key, for example `OPENAI_API_KEY`.
+
+Start the LangGraph development server from the repository root:
+
+```powershell
+conda activate writeagent
+set PYTHONUTF8=1
+langgraph dev --config langgraph.json --no-browser --no-reload
+```
+
+Use `--no-reload` to avoid noisy `changes detected` logs from `.langgraph_api` persistence flushes during local development.
+
+In a second terminal, start the frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. If Vite reports port 5173 is in use, stop the other process on that port first (the frontend is configured with `strictPort: true` so it will not silently switch ports). The UI connects to `http://localhost:2024` with `assistantId=writeagent`, renders coordinator messages, subagent cards, HITL interrupt cards, tool calls, and the six-stage workflow progress bar.
 
 ## Directory Map
 
 ```text
 agent_core/        Deep Agents factory, context, config, local runtime
+server/            LangGraph graph entrypoint and custom workflow REST routes
+frontend/          React/Vite frontend using @langchain/react useStream
 middleware/        workflow gate, trace, guardrails, human review policy
 tools/             execute_bash, progress, artifact manifest, delegation tools
 delegation/        local and remote A2A-compatible delegation facade

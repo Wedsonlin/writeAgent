@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 from middleware.guardrails import GuardrailsMiddleware, check_command
@@ -14,6 +15,16 @@ def test_check_command_allows_whitelisted_skill_script():
     decision = check_command(
         "python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py "
         "--input input.json --output output.json"
+    )
+
+    assert decision.allowed is True
+
+
+def test_check_command_allows_virtual_skill_script_path():
+    decision = check_command(
+        "python /skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py "
+        "--input /.writeagent/projects/default/artifacts/input.json "
+        "--output /.writeagent/projects/default/artifacts/output.json"
     )
 
     assert decision.allowed is True
@@ -45,6 +56,28 @@ def test_guardrails_middleware_blocks_non_whitelisted_execute_bash(tmp_path):
         "command": 'python -c "print(123)"',
         "cwd": None,
     }
+
+
+def test_guardrails_middleware_async_blocks_non_whitelisted_execute_bash(tmp_path):
+    middleware = GuardrailsMiddleware([tmp_path], repo_root=tmp_path)
+    called = False
+
+    async def handler(_request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = asyncio.run(
+        middleware.awrap_tool_call(
+            FakeToolRequest("execute_bash", {"command": 'python -c "print(123)"'}),
+            handler,
+        )
+    )
+
+    payload = json.loads(result.content)
+    assert called is False
+    assert payload["status"] == "blocked"
+    assert payload["reason"] == "Command is not in the execute_bash whitelist."
 
 
 def test_guardrails_middleware_blocks_cwd_outside_allowed_roots(tmp_path):
@@ -98,6 +131,63 @@ def test_guardrails_middleware_allows_whitelisted_execute_bash(tmp_path):
             },
         ),
         handler,
+    )
+
+    assert called is True
+    assert result == {"status": "ok"}
+
+
+def test_guardrails_middleware_maps_virtual_root_cwd(tmp_path):
+    middleware = GuardrailsMiddleware([tmp_path], repo_root=tmp_path)
+    called = False
+
+    def handler(_request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = middleware.wrap_tool_call(
+        FakeToolRequest(
+            "execute_bash",
+            {
+                "command": (
+                    "python /skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py "
+                    "--input /.writeagent/projects/default/artifacts/input.json "
+                    "--output /.writeagent/projects/default/artifacts/output.json"
+                ),
+                "cwd": "/",
+            },
+        ),
+        handler,
+    )
+
+    assert called is True
+    assert result == {"status": "ok"}
+
+
+def test_guardrails_middleware_async_allows_whitelisted_execute_bash(tmp_path):
+    middleware = GuardrailsMiddleware([tmp_path], repo_root=tmp_path)
+    called = False
+
+    async def handler(_request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = asyncio.run(
+        middleware.awrap_tool_call(
+            FakeToolRequest(
+                "execute_bash",
+                {
+                    "command": (
+                        "python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py "
+                        "--input input.json --output output.json"
+                    ),
+                    "cwd": str(tmp_path),
+                },
+            ),
+            handler,
+        )
     )
 
     assert called is True

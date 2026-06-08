@@ -18,6 +18,16 @@ def test_execute_bash_safe_command(tmp_path):
     assert "123" in result.stdout
 
 
+def test_execute_bash_maps_virtual_repo_paths(tmp_path):
+    script = _write_skill_script(tmp_path, "print(456)")
+    result = execute_bash(f"python /{script}", cwd="/", repo_root=tmp_path)
+
+    assert result.status == "ok"
+    assert result.exit_code == 0
+    assert result.cwd == str(tmp_path.resolve())
+    assert "456" in result.stdout
+
+
 def test_execute_bash_timeout(tmp_path):
     script = _write_skill_script(tmp_path, "import time; time.sleep(2)")
     result = execute_bash(f"python {script}", cwd=str(tmp_path), repo_root=tmp_path, timeout_sec=1)

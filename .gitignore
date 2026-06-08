@@ -7,12 +7,18 @@ venv/
 
 # writeAgent runtime artifacts
 .writeagent/
+.langgraph_api/
 .env
 case/outputs/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
 
 # IDE
 .vscode/
 .idea/
+.cursor/
 
 # OS
 .DS_Store

@@ -28,6 +28,13 @@ def test_agent_factory_builds_deep_agent_with_tools_middleware_and_context(tmp_p
     assert agent == {"agent": "fake"}
     assert captured["model"] == "fake-model"
     assert captured["context_schema"] is AgentRuntimeContext
+    assert captured["backend"].cwd == Path.cwd().resolve()
+    assert captured["backend"].virtual_mode is True
+    assert captured["permissions"][0].mode == "deny"
+    assert "/.env" in captured["permissions"][0].paths
+    assert captured["permissions"][-1].mode == "deny"
+    assert captured["permissions"][-1].paths == ["/**"]
+    assert captured["memory"] == [str(Path.cwd() / "skill_packs" / "academic-paper-writing" / "references" / "README.md")]
     assert {subagent["name"] for subagent in captured["subagents"]} == {
         "requirement-analysis-agent",
         "literature-review-agent",
