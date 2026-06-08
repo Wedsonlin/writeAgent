@@ -5,6 +5,7 @@ Responsibilities:
 - Use Deep Agents filesystem tools to read Skill documents and prepare input files.
 - Execute deterministic Skill scripts only through execute_bash.
 - Deep Agents filesystem paths are virtual paths rooted at the repository. Read case files from `/case/...` and Skill files from `/skill_packs/...`.
+- Paths embedded inside Skill input JSON and downstream artifacts must be readable by local Python scripts from the repository root. For repository files, store repo-relative paths such as `case/references/seed.bib`, not virtual tool paths such as `/case/references/seed.bib`.
 - Write all workflow input/output artifacts under `/.writeagent/projects/default/artifacts/...` with `write_file`; do not write to `/case`, `/tmp`, or `/workspace`.
 - When calling `execute_bash`, use `cwd="/"` for the repository root and run only `python /skill_packs/academic-paper-writing/skills/<skill>/scripts/run.py --input /.writeagent/projects/default/artifacts/... --output /.writeagent/projects/default/artifacts/...`.
 - Do not create files with shell redirection or here-docs; prepare files with `write_file` before executing a Skill script.

@@ -4,10 +4,10 @@
 Produce the `formatted_draft` artifact for the academic paper writing workflow stage `academic_formatting`.
 
 ## Inputs
-The Agent prepares a JSON input file containing upstream artifact content and task instructions.
+The Agent prepares a JSON input file containing the full `draft` object, formatting constraints, and export requirements. Do not pass only `artifact_ref`.
 
 ## Outputs
-The script writes a JSON output file. The Agent then records it with `update_artifact_manifest` and advances the ProgressLedger with `update_progress`.
+The script writes a JSON output file and a Markdown sidecar file next to it. The Agent then records it with `update_artifact_manifest` and advances the ProgressLedger with `update_progress`.
 
 ## Usage
 

@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 
 interface Props {
   interrupt: unknown;
-  onResume: (resume: unknown) => void;
+  onResume: (resume: unknown, target?: ResumeTarget) => void;
 }
 
 export function InterruptCard({ interrupt, onResume }: Props) {
   const request = useMemo(() => firstActionRequest(interrupt), [interrupt]);
+  const resumeTarget = useMemo(() => interruptTarget(interrupt), [interrupt]);
   const [response, setResponse] = useState("");
   const [editedCommand, setEditedCommand] = useState(() => commandFrom(request));
   const toolName = request?.name ?? "interrupt";
@@ -45,7 +46,7 @@ export function InterruptCard({ interrupt, onResume }: Props) {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              onResume({ decisions: [{ type: "respond", message: response }] });
+              onResume({ decisions: [{ type: "respond", message: response }] }, resumeTarget);
             }}
           >
             <textarea
@@ -65,10 +66,10 @@ export function InterruptCard({ interrupt, onResume }: Props) {
                 <textarea value={editedCommand} onChange={(event) => setEditedCommand(event.target.value)} />
               </label>
             )}
-            <button className="btn btn-approve" type="button" onClick={() => onResume({ decisions: [{ type: "approve" }] })}>
+            <button className="btn btn-approve" type="button" onClick={() => onResume({ decisions: [{ type: "approve" }] }, resumeTarget)}>
               批准执行
             </button>
-            <button className="btn btn-reject" type="button" onClick={() => onResume({ decisions: [{ type: "reject" }] })}>
+            <button className="btn btn-reject" type="button" onClick={() => onResume({ decisions: [{ type: "reject" }] }, resumeTarget)}>
               拒绝
             </button>
             {editedCommand && request && (
@@ -86,7 +87,7 @@ export function InterruptCard({ interrupt, onResume }: Props) {
                         },
                       },
                     ],
-                  })
+                  }, resumeTarget)
                 }
               >
                 编辑后执行
@@ -102,6 +103,11 @@ export function InterruptCard({ interrupt, onResume }: Props) {
 interface ActionRequest {
   name: string;
   args: Record<string, unknown>;
+}
+
+export interface ResumeTarget {
+  interruptId?: string;
+  namespace?: string[];
 }
 
 function firstActionRequest(interrupt: unknown): ActionRequest | null {
@@ -129,6 +135,20 @@ function unwrapInterrupt(interrupt: unknown): Record<string, unknown> | null {
     return value.__interrupt__[0].value as Record<string, unknown>;
   }
   return value;
+}
+
+function interruptTarget(interrupt: unknown): ResumeTarget | undefined {
+  if (!interrupt || typeof interrupt !== "object") {
+    return undefined;
+  }
+  const value = interrupt as Record<string, unknown>;
+  const interruptId = stringValue(value.id) ?? stringValue(value.interruptId) ?? stringValue(value.interrupt_id);
+  const namespace = Array.isArray(value.namespace) ? value.namespace.map(String) : undefined;
+  return interruptId ? { interruptId, namespace } : undefined;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function commandFrom(request: ActionRequest | null): string {

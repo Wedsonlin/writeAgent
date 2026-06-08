@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any, Callable
 from langchain_core.tools import StructuredTool
@@ -151,6 +152,21 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
     def delegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
         return delegate_to_agent(delegation_runtime, **kwargs)
 
+    async def aexecute_bash_tool(command: str, cwd: str | None = None, timeout_sec: int = 60, purpose: str | None = None) -> dict[str, Any]:
+        return await asyncio.to_thread(execute_bash_tool, command, cwd=cwd, timeout_sec=timeout_sec, purpose=purpose)
+
+    async def aupdate_artifact_manifest_tool(**kwargs: Any) -> dict[str, Any]:
+        return await asyncio.to_thread(update_artifact_manifest_tool, **kwargs)
+
+    async def aupdate_progress_tool(**kwargs: Any) -> dict[str, Any]:
+        return await asyncio.to_thread(update_progress_tool, **kwargs)
+
+    async def ainspect_progress_tool() -> dict[str, Any]:
+        return await asyncio.to_thread(inspect_progress_tool)
+
+    async def adelegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
+        return await asyncio.to_thread(delegate_to_agent_tool, **kwargs)
+
     return [
         StructuredTool.from_function(
             name="ask_user",
@@ -162,29 +178,34 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             name="execute_bash",
             description="Run a controlled command inside allowed project/workspace roots, primarily Skill scripts.",
             func=execute_bash_tool,
+            coroutine=aexecute_bash_tool,
             args_schema=ExecuteBashInput,
         ),
         StructuredTool.from_function(
             name="update_artifact_manifest",
             description="Record or update business artifact metadata in ArtifactManifest.",
             func=update_artifact_manifest_tool,
+            coroutine=aupdate_artifact_manifest_tool,
             args_schema=UpdateArtifactManifestInput,
         ),
         StructuredTool.from_function(
             name="update_progress",
             description="Update the ProgressLedger stage status and artifact links.",
             func=update_progress_tool,
+            coroutine=aupdate_progress_tool,
             args_schema=UpdateProgressInput,
         ),
         StructuredTool.from_function(
             name="inspect_progress",
             description="Inspect current workflow stage, blocked reason, and known artifacts.",
             func=inspect_progress_tool,
+            coroutine=ainspect_progress_tool,
         ),
         StructuredTool.from_function(
             name="delegate_to_agent",
             description="Delegate work through the A2A-compatible delegation runtime.",
             func=delegate_to_agent_tool,
+            coroutine=adelegate_to_agent_tool,
             args_schema=DelegateToAgentInput,
         ),
     ]

@@ -167,6 +167,14 @@ input {
   color: var(--text-secondary);
 }
 
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .header-link {
   display: inline-flex;
   align-items: center;
@@ -178,6 +186,11 @@ input {
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   transition: all var(--transition);
+}
+
+.header-button {
+  cursor: pointer;
+  background: transparent;
 }
 
 .header-link:hover {
@@ -897,6 +910,36 @@ input {
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   box-shadow: 0 2px 12px var(--shadow);
+}
+
+.input-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.prompt-chip {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--accent-blue);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.prompt-chip:hover {
+  background: var(--accent-blue-light);
+  border-color: var(--accent-blue);
+}
+
+.prompt-chip svg {
+  width: 14px;
+  height: 14px;
 }
 
 .chat-input textarea {

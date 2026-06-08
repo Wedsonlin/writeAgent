@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import time
 from pathlib import Path
@@ -11,6 +12,11 @@ from pydantic import BaseModel, Field
 
 from agent_core.config import REPO_ROOT
 from project_store.workspace import resolve_allowed_path
+
+try:  # pragma: no cover - only present under langgraph dev/runtime
+    from blockbuster.blockbuster import blockbuster_skip
+except Exception:  # pragma: no cover
+    blockbuster_skip = None
 
 
 class ExecuteBashInput(BaseModel):
@@ -40,6 +46,30 @@ def execute_bash(
     repo_root: str | Path = REPO_ROOT,
 ) -> ExecuteBashResult:
     """Run a shell command and return structured execution details."""
+    token = blockbuster_skip.set(True) if blockbuster_skip is not None else None
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(
+                _execute_bash_blocking,
+                command,
+                cwd=cwd,
+                timeout_sec=timeout_sec,
+                purpose=purpose,
+                repo_root=repo_root,
+            ).result()
+    finally:
+        if blockbuster_skip is not None and token is not None:
+            blockbuster_skip.reset(token)
+
+
+def _execute_bash_blocking(
+    command: str,
+    cwd: str | None = None,
+    timeout_sec: int = 60,
+    purpose: str | None = None,
+    *,
+    repo_root: str | Path = REPO_ROOT,
+) -> ExecuteBashResult:
     repo = Path(repo_root).resolve()
     workdir = resolve_allowed_path(cwd, default=repo, allowed_roots=[repo])
     command = _normalize_virtual_command_paths(command)

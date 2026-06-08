@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -36,6 +37,9 @@ class WorkflowGateMiddleware(AgentMiddleware):
 
     def evaluate_skill(self, skill_name: str) -> WorkflowGateDecision:
         return can_execute_skill(self.workflow, self._load_manifest(), skill_name)
+
+    async def aevaluate_skill(self, skill_name: str) -> WorkflowGateDecision:
+        return await asyncio.to_thread(self.evaluate_skill, skill_name)
 
     def wrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
         if _request_name(request) != "execute_bash":
@@ -73,7 +77,7 @@ class WorkflowGateMiddleware(AgentMiddleware):
         if skill_name is None:
             return await handler(request)
 
-        decision = self.evaluate_skill(skill_name)
+        decision = await self.aevaluate_skill(skill_name)
         payload = {
             "skill_name": skill_name,
             "command": command,
@@ -81,10 +85,10 @@ class WorkflowGateMiddleware(AgentMiddleware):
             "decision": decision.model_dump(),
         }
         if decision.status == "allowed":
-            self._trace("workflow_gate_allowed", "allowed", payload)
+            await self._atrace("workflow_gate_allowed", "allowed", payload)
             return await handler(request)
 
-        self._trace("workflow_gate_blocked", "blocked", payload)
+        await self._atrace("workflow_gate_blocked", "blocked", payload)
         return _blocked_tool_message(request, skill_name, command, decision)
 
     def _load_manifest(self) -> ArtifactManifest:
@@ -120,6 +124,10 @@ class WorkflowGateMiddleware(AgentMiddleware):
     def _trace(self, event_type: str, status: str, payload: dict[str, Any]) -> None:
         if self.trace_store is not None:
             self.trace_store.append(event_type, status=status, payload=payload)
+
+    async def _atrace(self, event_type: str, status: str, payload: dict[str, Any]) -> None:
+        if self.trace_store is not None:
+            await asyncio.to_thread(self.trace_store.append, event_type, status=status, payload=payload)
 
 
 def _request_name(request: Any) -> str | None:

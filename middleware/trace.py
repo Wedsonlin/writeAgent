@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Awaitable, Callable
 from langchain.agents.middleware import AgentMiddleware, ToolCallRequest
 from langchain_core.messages import ToolMessage
@@ -60,7 +61,8 @@ class TraceMiddleware(AgentMiddleware):
         except GraphBubbleUp:
             raise
         except Exception as exc:
-            self.record_tool(
+            await asyncio.to_thread(
+                self.record_tool,
                 tool_name,
                 "failed",
                 {
@@ -74,7 +76,7 @@ class TraceMiddleware(AgentMiddleware):
                 tool_call_id=request.tool_call["id"],
             )
 
-        self.record_tool(tool_name, "success", {"args": args, "result": _serialize_result(result)})
+        await asyncio.to_thread(self.record_tool, tool_name, "success", {"args": args, "result": _serialize_result(result)})
         return result
 
 
