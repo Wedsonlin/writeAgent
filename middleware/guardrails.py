@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -105,7 +106,7 @@ class GuardrailsMiddleware(AgentMiddleware):
         args = request.tool_call["args"]
         command = str(args.get("command", ""))
         cwd = args.get("cwd")
-        decision = self._check_execute_bash(command, cwd)
+        decision = await asyncio.to_thread(self._check_execute_bash, command, cwd)
         if decision.allowed:
             return await handler(request)
 

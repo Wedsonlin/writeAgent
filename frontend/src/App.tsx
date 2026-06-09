@@ -34,6 +34,8 @@ export default function App() {
     () => Array.from((stream.subagents ?? new Map()).values()) as unknown as Record<string, unknown>[],
     [stream.subagents],
   );
+  const streamInterrupts = (stream as { interrupts?: unknown[] }).interrupts ?? [];
+  const activeInterrupt = stream.interrupt ?? streamInterrupts[0];
   const isRunning = Boolean(stream.isLoading);
   const workflow = useWorkflowProgress(isRunning);
   const toolResults = useToolResults(messages);
@@ -125,9 +127,9 @@ export default function App() {
 
       <ChatPanel messages={messages} subagents={subagents} />
 
-      {stream.interrupt ? (
+      {activeInterrupt ? (
         <InterruptCard
-          interrupt={stream.interrupt}
+          interrupt={activeInterrupt}
           onResume={(resume, target) =>
             void stream
               .respond(resume, respondOptions(target) as never)

@@ -143,3 +143,46 @@ def test_workflow_gate_middleware_passes_through_non_skill_bash_command(tmp_path
 
     assert called is True
     assert result == {"status": "ok"}
+
+
+def test_workflow_gate_middleware_async_resolves_paths_off_event_loop(tmp_path, monkeypatch):
+    import os
+
+    original_getcwd = os.getcwd
+
+    def guarded_getcwd() -> str:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return original_getcwd()
+        raise RuntimeError("Blocking call to os.getcwd")
+
+    monkeypatch.setattr(os, "getcwd", guarded_getcwd)
+
+    workflow = load_workflow("skill_packs/academic-paper-writing/workflow.yaml")
+    manifest_path = tmp_path / "manifest.json"
+    manifest = ArtifactManifest.load(manifest_path)
+    manifest.upsert(ArtifactMeta(artifact_id="task", artifact_type="writing_task", path="task.json"))
+    gate = WorkflowGateMiddleware(
+        workflow,
+        manifest_path,
+        skill_pack_root=tmp_path / "skill_packs" / "academic-paper-writing",
+    )
+    called = False
+
+    async def handler(request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = asyncio.run(
+        gate.awrap_tool_call(
+            FakeToolRequest(
+                "python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py",
+            ),
+            handler,
+        )
+    )
+
+    assert called is True
+    assert result == {"status": "ok"}

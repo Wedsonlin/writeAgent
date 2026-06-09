@@ -213,7 +213,9 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
 def _build_interrupt_on() -> dict[str, object]:
     return {
         "ask_user": {"allowed_decisions": ["respond"]}, # return the human's message directly as the tool result, skipping execution, for "ask user" style tools
-        "execute_bash": {"allowed_decisions": ["approve", "edit", "reject"]},
+        # Whitelisted Skill scripts are already gated by GuardrailsMiddleware and WorkflowGateMiddleware.
+        # Requiring HITL inside nested subagents blocks the workflow and surfaces as a subagent "error" in the UI.
+        "execute_bash": False,
         "update_artifact_manifest": False,
         "update_progress": False,
         "inspect_progress": False,

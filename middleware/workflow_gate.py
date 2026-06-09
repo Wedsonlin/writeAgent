@@ -73,7 +73,7 @@ class WorkflowGateMiddleware(AgentMiddleware):
         args = _request_args(request)
         command = str(args.get("command", ""))
         cwd = args.get("cwd")
-        skill_name = self._infer_skill_name(command, cwd)
+        skill_name = await asyncio.to_thread(self._infer_skill_name, command, cwd)
         if skill_name is None:
             return await handler(request)
 

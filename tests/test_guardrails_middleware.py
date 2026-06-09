@@ -207,3 +207,45 @@ def test_guardrails_middleware_passes_through_other_tools():
 
     assert called is True
     assert result == {"status": "ok"}
+
+
+def test_guardrails_middleware_async_resolves_paths_off_event_loop(tmp_path, monkeypatch):
+    import os
+
+    original_getcwd = os.getcwd
+
+    def guarded_getcwd() -> str:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return original_getcwd()
+        raise RuntimeError("Blocking call to os.getcwd")
+
+    monkeypatch.setattr(os, "getcwd", guarded_getcwd)
+
+    middleware = GuardrailsMiddleware([tmp_path], repo_root=tmp_path)
+    called = False
+
+    async def handler(_request):
+        nonlocal called
+        called = True
+        return {"status": "ok"}
+
+    result = asyncio.run(
+        middleware.awrap_tool_call(
+            FakeToolRequest(
+                "execute_bash",
+                {
+                    "command": (
+                        "python skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py "
+                        "--input input.json --output output.json"
+                    ),
+                    "cwd": str(tmp_path),
+                },
+            ),
+            handler,
+        )
+    )
+
+    assert called is True
+    assert result == {"status": "ok"}

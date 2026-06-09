@@ -727,6 +727,16 @@ input {
   background: var(--accent-red);
 }
 
+.subagent-bar.awaiting {
+  background: var(--accent-amber, #d97706);
+}
+
+.subagent-error {
+  margin-top: 8px;
+  color: var(--accent-red);
+  font-size: 0.85rem;
+}
+
 .subagent-body {
   flex: 1;
   padding: 12px 16px;

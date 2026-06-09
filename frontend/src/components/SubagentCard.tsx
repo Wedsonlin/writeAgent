@@ -4,14 +4,18 @@ interface Props {
 
 export function SubagentCard({ subagent }: Props) {
   const name = String(subagent.name ?? subagent.nodeName ?? "subagent");
-  const status = String(subagent.status ?? "active");
-  const description = String(subagent.description ?? subagent.task ?? "");
-  const barClass = status === "completed" || status === "done"
+  const rawStatus = String(subagent.status ?? "active");
+  const errorMessage = typeof subagent.error === "string" ? subagent.error : "";
+  const description = String(subagent.description ?? subagent.task ?? subagent.taskInput ?? "");
+  const status = formatSubagentStatus(rawStatus, errorMessage);
+  const barClass = status.key === "completed"
     ? "completed"
-    : status === "error" || status === "failed"
+    : status.key === "error"
       ? "error"
-      : "";
-  const dotClass = status === "completed" || status === "done" ? "idle" : "running";
+      : status.key === "awaiting"
+        ? "awaiting"
+        : "";
+  const dotClass = status.key === "completed" ? "idle" : status.key === "error" ? "idle" : "running";
 
   return (
     <article className="subagent-card">
@@ -21,11 +25,28 @@ export function SubagentCard({ subagent }: Props) {
           <strong>{name}</strong>
           <span className="subagent-status">
             <span className={`status-dot ${dotClass}`} />
-            {status}
+            {status.label}
           </span>
         </div>
         {description && <p>{description}</p>}
+        {errorMessage && status.key === "error" && <p className="subagent-error">{errorMessage}</p>}
       </div>
     </article>
   );
+}
+
+function formatSubagentStatus(rawStatus: string, errorMessage: string): { key: string; label: string } {
+  if (rawStatus === "completed" || rawStatus === "complete" || rawStatus === "done") {
+    return { key: "completed", label: "completed" };
+  }
+  if (rawStatus === "error" || rawStatus === "failed") {
+    if (/approval|interrupt|requires approval/i.test(errorMessage)) {
+      return { key: "awaiting", label: "awaiting approval" };
+    }
+    return { key: "error", label: "error" };
+  }
+  if (rawStatus === "pending") {
+    return { key: "pending", label: "pending" };
+  }
+  return { key: "running", label: rawStatus || "running" };
 }
