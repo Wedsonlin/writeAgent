@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:tool-display": "node --experimental-strip-types src/lib/toolDisplay.test.mjs"
   },
   "dependencies": {
     "@langchain/react": "^1.0.18",

@@ -107,11 +107,16 @@ input {
   padding: 28px 24px;
 }
 
+.app-shell > * {
+  min-width: 0;
+}
+
 /* ── Header ──────────────────────────────────────────────────────── */
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-width: 0;
   padding: 20px 24px 18px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
@@ -200,6 +205,7 @@ input {
 
 /* ── Workflow panel ──────────────────────────────────────────────── */
 .workflow-panel {
+  min-width: 0;
   padding: 20px 24px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
@@ -212,6 +218,7 @@ input {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+  min-width: 0;
 }
 
 .panel-header h2 {
@@ -254,6 +261,8 @@ input {
   display: flex;
   align-items: center;
   gap: 0;
+  min-width: 0;
+  max-width: 100%;
   margin-top: 20px;
   padding: 4px 0;
   overflow-x: auto;
@@ -397,6 +406,7 @@ input {
 /* ── Status strip ────────────────────────────────────────────────── */
 .status-strip {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 10px 18px;
   background: var(--bg-card);
@@ -538,8 +548,10 @@ input {
 }
 
 .message.tool {
-  background: #f7f5f0;
-  border-color: var(--border-light);
+  max-width: 900px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
   font-size: 13px;
 }
 
@@ -685,17 +697,284 @@ input {
   transform: rotate(90deg);
 }
 
-.tool-card pre {
-  overflow: auto;
-  margin: 0;
-  padding: 14px;
+.tool-heading {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 1px;
+}
+
+.tool-title {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tool-subtitle {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-status-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-page);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tool-status-badge.success,
+.todo-status.success {
+  background: var(--accent-green-light);
+  color: var(--accent-green);
+  border-color: rgba(61, 122, 83, 0.18);
+}
+
+.tool-status-badge.running,
+.todo-status.running {
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+  border-color: rgba(58, 90, 140, 0.18);
+}
+
+.tool-status-badge.warning,
+.todo-status.warning {
+  background: var(--accent-amber-light);
+  color: var(--accent-amber);
+  border-color: rgba(184, 134, 11, 0.18);
+}
+
+.tool-status-badge.danger,
+.todo-status.danger {
+  background: var(--accent-red-light);
+  color: var(--accent-red);
+  border-color: rgba(158, 48, 48, 0.18);
+}
+
+.tool-display-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 14px;
   border-top: 1px solid var(--border-light);
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.tool-display-summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tool-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.tool-field {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+}
+
+.tool-field dt {
+  margin: 0 0 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tool-field dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.tool-field dd.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.tool-todo-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tool-todo-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+}
+
+.todo-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tool-todo-item.success .todo-check {
+  background: var(--accent-green);
+  color: #fff;
+}
+
+.tool-todo-item.running .todo-check {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.tool-todo-item.warning .todo-check {
+  background: var(--accent-amber);
+  color: #fff;
+}
+
+.tool-todo-item.danger .todo-check {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+.todo-content {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.todo-status {
+  justify-self: end;
+  padding: 2px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tool-path-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tool-path-list code {
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+  color: var(--accent-blue);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.tool-markdown {
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.tool-markdown p {
+  margin: 0 0 8px;
+}
+
+.tool-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.tool-markdown pre {
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: #1a1a24;
+  color: #c8c8d4;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tool-raw-details {
+  border-top: 1px dashed var(--border-light);
+  padding-top: 8px;
+}
+
+.tool-raw-details.only {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.tool-raw-details summary {
+  display: inline-flex;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tool-raw-details pre {
+  overflow: auto;
+  max-height: 280px;
+  margin: 8px 0 0;
+  padding: 14px;
+  border-radius: var(--radius-sm);
   background: #1a1a24;
   color: #c8c8d4;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.tool-result-card {
+  max-width: 900px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  box-shadow: 0 1px 8px var(--shadow);
+}
+
+.tool-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
 }
 
 /* ── Subagent card ───────────────────────────────────────────────── */

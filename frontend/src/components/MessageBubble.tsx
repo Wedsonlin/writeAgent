@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ToolCallCard } from "./ToolCallCard";
+import { ToolResultCard } from "./ToolResultCard";
 
 interface Props {
   message: unknown;
@@ -70,7 +71,10 @@ export function MessageBubble({ message }: Props) {
         {roleInfo?.icon}
         {roleInfo?.label ?? normalized.role}
       </div>
-      {normalized.content && (
+      {normalized.content && normalized.role === "tool" && (
+        <ToolResultCard content={normalized.content} name={normalized.name} parsed={normalized.parsed} />
+      )}
+      {normalized.content && normalized.role !== "tool" && (
         <div className="message-content">
           {normalized.role === "ai" || normalized.role === "assistant" ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalized.content}</ReactMarkdown>
@@ -99,6 +103,8 @@ export interface ToolCallSummary {
 export function normalizeMessage(message: unknown): {
   role: string;
   content: string;
+  name?: string;
+  parsed?: unknown;
   toolCalls: ToolCallSummary[];
 } {
   if (!message || typeof message !== "object") {
@@ -110,6 +116,8 @@ export function normalizeMessage(message: unknown): {
   return {
     role,
     content: contentToText(value.content),
+    name: typeof value.name === "string" ? value.name : undefined,
+    parsed: parseJson(contentToText(value.content)),
     toolCalls: normalizeToolCalls(value.tool_calls ?? value.toolCalls),
   };
 }
@@ -146,4 +154,12 @@ function contentToText(content: unknown): string {
       .join("\n");
   }
   return content == null ? "" : JSON.stringify(content, null, 2);
+}
+
+function parseJson(content: string): unknown | undefined {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return undefined;
+  }
 }
