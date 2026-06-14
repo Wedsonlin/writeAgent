@@ -1,3 +1,94 @@
 {
-  "type": "object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FormatReport",
+  "description": "Pack-level schema for the academic_formatting stage output envelope",
+  "type": "object",
+  "required": ["artifact_type"],
+  "properties": {
+    "artifact_type": {
+      "type": "string",
+      "const": "formatted_draft"
+    },
+    "formatted_draft": {
+      "type": "object",
+      "required": [
+        "normalized_draft",
+        "markdown",
+        "markdown_path",
+        "issues",
+        "quality_checks"
+      ],
+      "properties": {
+        "normalized_draft": {
+          "type": "object",
+          "required": ["title", "abstract", "keywords", "sections", "references"],
+          "properties": {
+            "title": {"type": "string"},
+            "abstract": {"type": "string"},
+            "keywords": {"type": "array", "items": {"type": "string"}},
+            "sections": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["title", "content_markdown"],
+                "properties": {
+                  "id": {"type": "string"},
+                  "title": {"type": "string"},
+                  "level": {"type": "integer", "minimum": 1},
+                  "content_markdown": {"type": "string"},
+                  "citations_used": {"type": "array", "items": {"type": "string"}},
+                  "word_count": {"type": "integer"}
+                },
+                "additionalProperties": true
+              }
+            },
+            "references": {"type": "array"},
+            "open_questions": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        },
+        "markdown": {"type": "string", "minLength": 1},
+        "markdown_path": {"type": "string"},
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "severity", "message"],
+            "properties": {
+              "code": {"type": "string"},
+              "severity": {"type": "string", "enum": ["fixed", "warning", "error"]},
+              "field": {"type": "string"},
+              "message": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "quality_checks": {
+          "type": "object",
+          "required": ["headings_normalized", "references_formatted"],
+          "properties": {
+            "headings_normalized": {"type": "boolean"},
+            "references_formatted": {"type": "boolean"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "required": ["message", "fields"],
+      "properties": {
+        "message": {"type": "string"},
+        "fields": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  },
+  "oneOf": [
+    {"required": ["formatted_draft"]},
+    {"required": ["error"]}
+  ],
+  "additionalProperties": true
 }

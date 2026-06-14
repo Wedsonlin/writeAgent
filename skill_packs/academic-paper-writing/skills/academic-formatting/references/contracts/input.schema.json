@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AcademicFormattingInput",
+  "type": "object",
+  "required": ["draft"],
+  "properties": {
+    "draft": {
+      "type": "object",
+      "required": ["title", "abstract", "keywords", "sections", "references"],
+      "properties": {
+        "title": {"type": "string"},
+        "abstract": {"type": "string"},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["title", "content_markdown"],
+            "properties": {
+              "id": {"type": "string"},
+              "title": {"type": "string"},
+              "level": {"type": "integer", "minimum": 1},
+              "content_markdown": {"type": "string"},
+              "citations_used": {"type": "array", "items": {"type": "string"}},
+              "word_count": {"type": "integer"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "properties": {
+                  "id": {"type": "string"},
+                  "type": {"type": "string"},
+                  "title": {"type": "string"},
+                  "authors": {"type": "array", "items": {"type": "string"}},
+                  "year": {"type": ["integer", "null"]},
+                  "venue": {"type": "string"},
+                  "doi": {"type": ["string", "null"]},
+                  "url": {"type": ["string", "null"]},
+                  "gb7714": {"type": "string"},
+                  "text": {"type": "string"},
+                  "citation": {"type": "string"}
+                },
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "open_questions": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "formatting_constraints": {
+      "type": "object",
+      "properties": {
+        "citation_style": {
+          "type": "string",
+          "description": "Bibliography style label, e.g. GB/T 7714"
+        },
+        "heading_rules": {
+          "type": "object",
+          "properties": {
+            "max_level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6,
+              "description": "Maximum section nesting depth in draft.sections[].level"
+            },
+            "abstract_heading": {
+              "type": "string",
+              "description": "Rendered Markdown heading for the abstract block, default ## 摘要"
+            }
+          },
+          "additionalProperties": true
+        },
+        "reference_rules": {
+          "type": "object",
+          "properties": {
+            "in_text_style": {
+              "type": "string",
+              "enum": ["numeric-bracket"],
+              "description": "In-text citation marker style; numeric-bracket means [n]"
+            },
+            "bibliography_style": {
+              "type": "string",
+              "enum": ["gb7714"],
+              "description": "Bibliography entry formatter"
+            }
+          },
+          "additionalProperties": true
+        },
+        "export_format": {
+          "type": "string",
+          "enum": ["markdown"],
+          "description": "Rendered artifact format"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
