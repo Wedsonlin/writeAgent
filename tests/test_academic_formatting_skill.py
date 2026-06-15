@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -28,7 +29,8 @@ def test_happy_path_clean_draft(tmp_path):
     assets = repo_root / "skill_packs" / "academic-paper-writing" / "skills" / "academic-formatting" / "assets"
     input_path = tmp_path / "input.json"
     output_path = tmp_path / "formatted_draft.json"
-    input_path.write_text((assets / "input.example.json").read_text(encoding="utf-8"), encoding="utf-8")
+    # draft.sample.json omits formatting_constraints; script should apply GB/T 7714 defaults.
+    input_path.write_text((assets / "draft.sample.json").read_text(encoding="utf-8"), encoding="utf-8")
 
     result = _run_script(repo_root, input_path, output_path)
 
@@ -40,15 +42,18 @@ def test_happy_path_clean_draft(tmp_path):
     assert formatted["quality_checks"]["references_formatted"] is True
     assert formatted["issues"] == []
     assert len(formatted["markdown"]) >= 3000
-    assert Path(formatted["markdown_path"]).exists()
+    markdown_path = Path(formatted["markdown_path"])
+    assert markdown_path.exists()
+    assert markdown_path.read_text(encoding="utf-8") == formatted["markdown"]
 
 
 def test_normalizes_messy_draft(tmp_path):
     repo_root = Path.cwd()
     assets = repo_root / "skill_packs" / "academic-paper-writing" / "skills" / "academic-formatting" / "assets"
     example = json.loads((assets / "input.example.json").read_text(encoding="utf-8"))
+    raw_wrapper = json.loads((assets / "draft.raw.sample.json").read_text(encoding="utf-8"))
     messy_input = {
-        "draft": json.loads((assets / "draft.raw.sample.json").read_text(encoding="utf-8")),
+        "draft": raw_wrapper["draft"],
         "formatting_constraints": example["formatting_constraints"],
     }
     input_path = tmp_path / "input.json"
@@ -61,16 +66,29 @@ def test_normalizes_messy_draft(tmp_path):
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     formatted = payload["formatted_draft"]
     issues = formatted["issues"]
+    fixed_codes = {issue["code"] for issue in issues if issue["severity"] == "fixed"}
     assert issues
-    assert any(issue["severity"] == "fixed" for issue in issues)
+    assert "heading_level_jump" in fixed_codes
+    assert "citation_style_inconsistent" in fixed_codes
     assert formatted["quality_checks"]["headings_normalized"] is True
     assert formatted["quality_checks"]["references_formatted"] is True
-    markdown = formatted["markdown"]
-    assert "(1)" not in markdown or "[1]" in markdown
-    for section in formatted["normalized_draft"]["sections"]:
+
+    normalized = formatted["normalized_draft"]
+    levels = [section["level"] for section in normalized["sections"] if section.get("title")]
+    assert levels[1] == 2  # raw sample had level 3 jump after level 1
+    prev = 0
+    for level in levels:
+        assert level <= prev + 1
+        prev = level
+
+    for section in normalized["sections"]:
         content = section.get("content_markdown", "")
         assert "[[" not in content
         assert "[(" not in content
+        assert re.search(r"(?<!\[)\(\d+\)(?!\])", content) is None
+
+    assert "## 参考文献" in formatted["markdown"]
+    assert re.search(r"^\[\d+\] ", formatted["markdown"], re.MULTILINE)
 
 
 def test_missing_draft_fails(tmp_path):
