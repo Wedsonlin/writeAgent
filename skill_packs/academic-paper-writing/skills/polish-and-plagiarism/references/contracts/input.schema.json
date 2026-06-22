@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PolishAndPlagiarismInput",
+  "description": "Script input for Skill6 polish_and_plagiarism: Agent-polished Markdown plus audit metadata",
+  "type": "object",
+  "required": ["polished_markdown"],
+  "properties": {
+    "formatted_draft": {
+      "type": "object",
+      "description": "Skill5 output snapshot; required for diff checks when present",
+      "properties": {
+        "markdown": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pre-polish full paper Markdown from academic_formatting"
+        },
+        "markdown_path": {
+          "type": "string",
+          "description": "Filesystem path to the formatted Markdown sidecar"
+        },
+        "issues": {
+          "type": "array",
+          "items": {"type": "object"},
+          "description": "Issues recorded by Skill5; passed through for context only"
+        },
+        "quality_checks": {
+          "type": "object",
+          "description": "Skill5 quality_checks snapshot"
+        }
+      },
+      "required": ["markdown"],
+      "additionalProperties": true
+    },
+    "polished_markdown": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Agent-polished full paper Markdown; minimum ~3000 characters enforced by script"
+    },
+    "polish_constraints": {
+      "type": "object",
+      "description": "Polish policy; defaults applied when omitted",
+      "properties": {
+        "tone": {
+          "type": "string",
+          "enum": ["formal-zh"],
+          "default": "formal-zh",
+          "description": "Target academic tone; aligns with writing_task.style_profile.tone"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["zh"],
+          "default": "zh"
+        },
+        "preserve_citations": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, in-text [n] markers must match formatted_draft"
+        },
+        "preserve_headings": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, heading lines must match formatted_draft"
+        }
+      },
+      "additionalProperties": true
+    },
+    "protected_claims": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Factual claims that must remain verbatim substrings in polished_markdown"
+    },
+    "citation_constraints": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": ["numeric-bracket"],
+          "description": "In-text citation marker style; numeric-bracket means [n]"
+        },
+        "forbidden_changes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["remove_marker", "renumber", "reorder_bibliography"]
+          },
+          "description": "Citation mutations that must not occur during polish"
+        }
+      },
+      "additionalProperties": true
+    },
+    "polish_log": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Non-empty audit trail of substantive edits; required for polish_log_present",
+      "items": {
+        "type": "object",
+        "required": ["section", "change_type", "reason"],
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Section title or logical block where the edit occurred"
+          },
+          "change_type": {
+            "type": "string",
+            "enum": ["wording", "deduplication", "tone", "clarity", "other"],
+            "description": "Category of polish change"
+          },
+          "before": {
+            "type": "string",
+            "description": "Original phrase or sentence fragment (may be truncated)"
+          },
+          "after": {
+            "type": "string",
+            "description": "Revised phrase or sentence fragment (may be truncated)"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the change was made, e.g. remove informal tone"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "plagiarism_optimization": {
+      "type": "array",
+      "description": "Structured similarity-reduction suggestions; no external plagiarism API",
+      "items": {
+        "type": "object",
+        "required": ["location", "risk", "suggestion"],
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "Section or paragraph where similar phrasing was detected"
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "high_similarity_phrase",
+              "cross_section_repetition",
+              "common_template_wording",
+              "other"
+            ],
+            "description": "Heuristic risk category"
+          },
+          "original": {
+            "type": "string",
+            "description": "Problematic or repetitive source phrase"
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "Recommended rewrite direction"
+          },
+          "rewrite_hint": {
+            "type": "string",
+            "description": "Concrete hint emphasizing paper-specific differentiation"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "accept_formatted_without_changes": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test/boundary flag: allow falling back to formatted_draft.markdown when polished_markdown is empty"
+    }
+  },
+  "additionalProperties": true
+}

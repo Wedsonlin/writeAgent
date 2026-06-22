@@ -1,3 +1,133 @@
 {
-  "type": "object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PolishReport",
+  "description": "Pack-level schema for the polish_and_plagiarism stage output envelope",
+  "type": "object",
+  "required": ["artifact_type"],
+  "properties": {
+    "artifact_type": {
+      "type": "string",
+      "const": "polished_draft"
+    },
+    "polished_draft": {
+      "type": "object",
+      "required": [
+        "markdown",
+        "markdown_path",
+        "polish_log",
+        "plagiarism_optimization",
+        "issues",
+        "quality_checks"
+      ],
+      "properties": {
+        "markdown": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Final polished full paper Markdown"
+        },
+        "markdown_path": {
+          "type": "string",
+          "description": "Filesystem path to the Markdown sidecar"
+        },
+        "polish_log": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["section", "change_type", "reason"],
+            "properties": {
+              "section": {"type": "string"},
+              "change_type": {
+                "type": "string",
+                "enum": ["wording", "deduplication", "tone", "clarity", "other"]
+              },
+              "before": {"type": "string"},
+              "after": {"type": "string"},
+              "reason": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "plagiarism_optimization": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["location", "risk", "suggestion"],
+            "properties": {
+              "location": {"type": "string"},
+              "risk": {
+                "type": "string",
+                "enum": [
+                  "high_similarity_phrase",
+                  "cross_section_repetition",
+                  "common_template_wording",
+                  "other"
+                ]
+              },
+              "original": {"type": "string"},
+              "suggestion": {"type": "string"},
+              "rewrite_hint": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "severity", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "e.g. informal_tone, citation_marker_changed, bibliography_changed, heading_structure_changed, repetitive_phrasing, protected_claim_missing"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["fixed", "warning", "error"]
+              },
+              "field": {"type": "string"},
+              "message": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "quality_checks": {
+          "type": "object",
+          "required": ["tone_academic", "polish_log_present"],
+          "properties": {
+            "tone_academic": {
+              "type": "boolean",
+              "description": "True when no unresolved tone/citation/heading/repetition warnings remain"
+            },
+            "polish_log_present": {
+              "type": "boolean",
+              "description": "True when polish_log is non-empty and structurally valid"
+            }
+          },
+          "additionalProperties": true
+        },
+        "source_formatted_path": {
+          "type": ["string", "null"],
+          "description": "Optional path to formatted_draft Markdown used for diff checks"
+        }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "required": ["message", "fields"],
+      "properties": {
+        "message": {"type": "string"},
+        "fields": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "oneOf": [
+    {"required": ["polished_draft"]},
+    {"required": ["error"]}
+  ],
+  "additionalProperties": true
 }

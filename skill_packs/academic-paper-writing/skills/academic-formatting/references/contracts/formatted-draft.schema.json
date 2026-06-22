@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FormattedDraft",
+  "type": "object",
+  "required": [
+    "normalized_draft",
+    "markdown",
+    "markdown_path",
+    "issues",
+    "quality_checks"
+  ],
+  "properties": {
+    "normalized_draft": {
+      "type": "object",
+      "required": ["title", "abstract", "keywords", "sections", "references"],
+      "properties": {
+        "title": {"type": "string"},
+        "abstract": {"type": "string"},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["title", "content_markdown"],
+            "properties": {
+              "id": {"type": "string"},
+              "title": {"type": "string"},
+              "level": {"type": "integer", "minimum": 1},
+              "content_markdown": {"type": "string"},
+              "citations_used": {"type": "array", "items": {"type": "string"}},
+              "word_count": {"type": "integer"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "references": {"type": "array"},
+        "open_questions": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "markdown": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Full rendered paper Markdown"
+    },
+    "markdown_path": {
+      "type": "string",
+      "description": "Filesystem path to the Markdown sidecar written beside the JSON output"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable issue code, e.g. heading_level_jump"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["fixed", "warning", "error"],
+            "description": "fixed = auto-corrected; warning = recorded but non-blocking; error = blocking"
+          },
+          "field": {
+            "type": "string",
+            "description": "JSON pointer-like path to the affected field"
+          },
+          "message": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "quality_checks": {
+      "type": "object",
+      "required": ["headings_normalized", "references_formatted"],
+      "properties": {
+        "headings_normalized": {
+          "type": "boolean",
+          "description": "True when heading hierarchy has no unresolved warnings"
+        },
+        "references_formatted": {
+          "type": "boolean",
+          "description": "True when in-text citations and bibliography meet style rules"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

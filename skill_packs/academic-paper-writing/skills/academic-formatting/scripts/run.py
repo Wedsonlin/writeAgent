@@ -2,28 +2,34 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
+import re
 from pathlib import Path
 from typing import Any
 
+from format_refs import format_references, render_reference_lines
+from normalize import normalize_draft
+from validate import (
+    ContractError,
+    FormattingConstraints,
+    compute_quality_checks,
+    detect_format_issues,
+    extract_draft,
+    parse_formatting_constraints,
+    validate_markdown_length,
+)
 
-@dataclass
-class ContractError(Exception):
-    message: str
-    fields: list[str]
-
-    def __str__(self) -> str:
-        return self.message
+Issue = dict[str, Any]
 
 
 def main() -> int:
     args = _parse()
     data = _load(args.input)
     try:
-        draft = _extract_draft(data)
-        markdown = _render_markdown(draft)
-        if len(markdown) < 3000:
-            raise ContractError("formatted markdown is too short for a paper artifact", ["formatted_draft.markdown"])
+        constraints = parse_formatting_constraints(data)
+        draft = extract_draft(data)
+        normalized, issues = _process_draft(draft, constraints)
+        markdown = _render_markdown(normalized, constraints)
+        validate_markdown_length(markdown)
     except ContractError as exc:
         _write(args.output, {"artifact_type": "formatted_draft", "error": {"message": str(exc), "fields": exc.fields}})
         return 1
@@ -31,13 +37,22 @@ def main() -> int:
     markdown_path = str(Path(args.output).with_suffix(".md"))
     Path(markdown_path).write_text(markdown, encoding="utf-8")
     formatted = {
-        "normalized_draft": draft,
+        "normalized_draft": normalized,
         "markdown": markdown,
         "markdown_path": markdown_path,
-        "issues": [],
+        "issues": issues,
+        "quality_checks": compute_quality_checks(issues),
     }
     _write(args.output, {"artifact_type": "formatted_draft", "formatted_draft": formatted})
     return 0
+
+
+def _process_draft(draft: dict[str, Any], constraints: FormattingConstraints) -> tuple[dict[str, Any], list[Issue]]:
+    normalized, norm_issues = normalize_draft(draft, constraints)
+    normalized, ref_issues = format_references(normalized, constraints)
+    fixed_issues = [*norm_issues, *(issue for issue in ref_issues if issue.get("severity") == "fixed")]
+    warning_issues = detect_format_issues(normalized, constraints)
+    return normalized, [*fixed_issues, *warning_issues]
 
 
 def _parse() -> argparse.Namespace:
@@ -57,25 +72,13 @@ def _write(path: str, payload: dict[str, Any]) -> None:
     p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _extract_draft(data: dict[str, Any]) -> dict[str, Any]:
-    draft = data.get("draft")
-    if isinstance(draft, dict) and "draft" in draft and isinstance(draft["draft"], dict):
-        draft = draft["draft"]
-    if not isinstance(draft, dict):
-        raise ContractError("formatting input must include the full draft object", ["draft"])
-    sections = draft.get("sections")
-    if not isinstance(sections, list) or not sections:
-        raise ContractError("draft.sections is required", ["draft.sections"])
-    return draft
-
-
-def _render_markdown(draft: dict[str, Any]) -> str:
+def _render_markdown(draft: dict[str, Any], constraints: FormattingConstraints) -> str:
     lines: list[str] = []
     title = str(draft.get("title") or "未命名论文").strip()
     lines.extend([f"# {title}", ""])
     abstract = str(draft.get("abstract") or "").strip()
     if abstract:
-        lines.extend(["## 摘要", "", abstract, ""])
+        lines.extend(_abstract_block(abstract, constraints.abstract_heading))
     keywords = [str(item).strip() for item in draft.get("keywords", []) if str(item).strip()]
     if keywords:
         lines.extend(["**关键词**：" + "；".join(keywords), ""])
@@ -91,24 +94,17 @@ def _render_markdown(draft: dict[str, Any]) -> str:
     references = draft.get("references")
     if isinstance(references, list) and references:
         lines.extend(["## 参考文献", ""])
-        for index, ref in enumerate(references, 1):
-            text = _reference_text(ref)
-            if text:
-                lines.append(f"[{index}] {text}")
+        lines.extend(render_reference_lines(references, bibliography_style=constraints.bibliography_style))
         lines.append("")
     return "\n".join(lines).strip() + "\n"
 
 
-def _reference_text(ref: Any) -> str:
-    if isinstance(ref, str):
-        return ref.strip()
-    if not isinstance(ref, dict):
-        return ""
-    for key in ("gb7714", "text", "citation", "title"):
-        value = ref.get(key)
-        if value:
-            return str(value).strip()
-    return ""
+def _abstract_block(abstract: str, abstract_heading: str) -> list[str]:
+    heading = abstract_heading.strip() or "## 摘要"
+    match = re.match(r"^(#+)\s+(.+)$", heading)
+    if match:
+        return [f"{match.group(1)} {match.group(2)}", "", abstract, ""]
+    return [heading, "", abstract, ""]
 
 
 if __name__ == "__main__":

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PolishedDraft",
+  "description": "Inner polished_draft object written by polish-and-plagiarism/scripts/run.py",
+  "type": "object",
+  "required": [
+    "markdown",
+    "markdown_path",
+    "polish_log",
+    "plagiarism_optimization",
+    "issues",
+    "quality_checks"
+  ],
+  "properties": {
+    "markdown": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Final polished full paper Markdown"
+    },
+    "markdown_path": {
+      "type": "string",
+      "description": "Filesystem path to the Markdown sidecar written beside the JSON output"
+    },
+    "polish_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["section", "change_type", "reason"],
+        "properties": {
+          "section": {"type": "string"},
+          "change_type": {
+            "type": "string",
+            "enum": ["wording", "deduplication", "tone", "clarity", "other"]
+          },
+          "before": {"type": "string"},
+          "after": {"type": "string"},
+          "reason": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "description": "Audit trail copied from input; must be non-empty on successful runs"
+    },
+    "plagiarism_optimization": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["location", "risk", "suggestion"],
+        "properties": {
+          "location": {"type": "string"},
+          "risk": {
+            "type": "string",
+            "enum": [
+              "high_similarity_phrase",
+              "cross_section_repetition",
+              "common_template_wording",
+              "other"
+            ]
+          },
+          "original": {"type": "string"},
+          "suggestion": {"type": "string"},
+          "rewrite_hint": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "description": "Similarity-reduction suggestions from Agent; informational only"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable issue code, e.g. informal_tone, citation_marker_changed"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["fixed", "warning", "error"],
+            "description": "warning drives quality_checks; error is blocking"
+          },
+          "field": {
+            "type": "string",
+            "description": "JSON pointer-like path to the affected field"
+          },
+          "message": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "quality_checks": {
+      "type": "object",
+      "required": ["tone_academic", "polish_log_present"],
+      "properties": {
+        "tone_academic": {
+          "type": "boolean",
+          "description": "True when no unresolved tone/citation/heading/repetition warnings remain"
+        },
+        "polish_log_present": {
+          "type": "boolean",
+          "description": "True when polish_log is non-empty and structurally valid"
+        }
+      },
+      "additionalProperties": true
+    },
+    "source_formatted_path": {
+      "type": ["string", "null"],
+      "description": "Optional path to the formatted_draft Markdown used for diff checks"
+    }
+  },
+  "additionalProperties": true
+}

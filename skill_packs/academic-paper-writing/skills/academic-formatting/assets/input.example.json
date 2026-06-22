@@ -1,0 +1,176 @@
+{
+  "draft": {
+    "title": "面向学术论文写作的智能 Agent 设计与实现",
+    "abstract": "随着大语言模型技术的快速发展，面向学术场景的智能写作辅助成为重要研究方向。现有工具多聚焦单点能力，缺少从需求分析到格式校验的端到端编排。本文提出一种大脑决策与 Skill 工具调用相结合的智能 Agent 系统，以 LangGraph 实现状态化工作流，以 OpenClaw 兼容 Skill 封装领域能力，并通过 JSON Schema 统一跨阶段输入输出契约。系统在文献梳理、正文生成与格式规范化等环节引入确定性脚本门禁，在保障学术规范性的同时降低非专业用户的写作门槛。实验表明，该架构在引用完整性与章节结构一致性方面具有稳定表现。",
+    "keywords": [
+      "大语言模型 Agent",
+      "学术写作辅助",
+      "工具编排",
+      "Skill 架构",
+      "LangGraph"
+    ],
+    "sections": [
+      {
+        "id": "1",
+        "title": "引言",
+        "level": 1,
+        "content_markdown": "本节围绕研究背景与动机展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[1]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 本文贡献包括提出双轨架构、统一 JSON 契约与六阶段 Skill 划分。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "yao2022react"
+        ],
+        "word_count": 402
+      },
+      {
+        "id": "2",
+        "title": "相关工作",
+        "level": 1,
+        "content_markdown": "本节围绕LLM Agent 与工具调用展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[1]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 Toolformer 等工作进一步证明模型可自主学习 API 调用时机[2]。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "yao2022react",
+          "schick2023toolformer"
+        ],
+        "word_count": 400
+      },
+      {
+        "id": "3",
+        "title": "系统设计",
+        "level": 1,
+        "content_markdown": "本节围绕总体架构展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[3]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 编排层采用 LangGraph 管理状态图与条件边，实现可恢复的多 Actor 协作[3]。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "langgraph2024"
+        ],
+        "word_count": 401
+      },
+      {
+        "id": "3.1",
+        "title": "核心模块",
+        "level": 2,
+        "content_markdown": "本节围绕模块划分与数据流展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[4]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 Skill 目录遵循 Agent Skills 规范，包含 SKILL.md、脚本与参考文档[4]。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "anthropic2025skills"
+        ],
+        "word_count": 400
+      },
+      {
+        "id": "4",
+        "title": "关键技术实现",
+        "level": 1,
+        "content_markdown": "本节围绕契约校验与确定性脚本展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[3]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 各阶段脚本对输入输出执行 schema 级校验，避免 LLM 幻觉污染下游产物。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "langgraph2024"
+        ],
+        "word_count": 408
+      },
+      {
+        "id": "5",
+        "title": "实验与评测",
+        "level": 1,
+        "content_markdown": "本节围绕评测设置与结果展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[5]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 对照已有学术写作辅助综述中的任务划分，系统在提纲一致性与引用完整性上表现稳定[5]。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "liu2024scholarly"
+        ],
+        "word_count": 416
+      },
+      {
+        "id": "6",
+        "title": "结论",
+        "level": 1,
+        "content_markdown": "本节围绕总结与未来工作展开论述。大语言模型驱动的智能体正在重塑知识工作者的创作流程，尤其在学术写作场景中，模型需要兼顾事实性、可引用性与格式规范性。现有研究表明，将推理轨迹与外部工具调用交替进行，可显著提升复杂任务的完成质量[1]。与此同时，工作流编排框架为长链路任务提供了状态管理与检查点机制，使多阶段写作过程可被可靠追踪。Skill 化能力扩展则把领域知识封装为可热插拔模块，降低主系统与垂直能力之间的耦合度。本文在设计与实现中充分吸收上述思路，并在后续章节给出工程化落地细节与评测结果。 未来将扩展端到端案例库，并加强与查重、投稿模板的衔接。在工程实践中，团队需要将模型推理、工具调用、人工审阅与确定性校验解耦，以避免单点失败导致整篇论文产物不可追溯。因此，本文强调每个 Skill 均应具备可执行的脚本门禁、清晰的输入输出契约，以及可被 ProgressLedger 追踪的阶段状态。此外，中文学术写作对标题层级、摘要体例与参考文献格式有严格要求，格式规范化阶段不应依赖模型自由发挥，而应通过规则引擎完成可验证的修正。",
+        "citations_used": [
+          "yao2022react"
+        ],
+        "word_count": 402
+      }
+    ],
+    "references": [
+      {
+        "id": "yao2022react",
+        "type": "preprint",
+        "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+        "authors": [
+          "Shunyu Yao",
+          "Jeffrey Zhao",
+          "Dian Yu",
+          "Nan Du",
+          "Izhak Shafran",
+          "Karthik Narasimhan",
+          "Yuan Cao"
+        ],
+        "year": 2022,
+        "venue": "arXiv preprint arXiv:2210.03629",
+        "doi": "10.48550/arXiv.2210.03629",
+        "gb7714": "Yao S, Zhao J, Yu D, 等. ReAct: Synergizing Reasoning and Acting in Language Models[EB/OL]. arXiv preprint arXiv:2210.03629, 2022. DOI:10.48550/arXiv.2210.03629."
+      },
+      {
+        "id": "schick2023toolformer",
+        "type": "preprint",
+        "title": "Toolformer: Language Models Can Teach Themselves to Use Tools",
+        "authors": [
+          "Timo Schick",
+          "Jane Dwivedi-Yu",
+          "Roberto Dessi",
+          "Roberta Raileanu",
+          "Maria Lomeli",
+          "Luke Zettlemoyer",
+          "Nicola Cancedda",
+          "Thomas Scialom"
+        ],
+        "year": 2023,
+        "venue": "arXiv preprint arXiv:2302.04761",
+        "gb7714": "Schick T, Dwivedi-Yu J, Dessi R, 等. Toolformer: Language Models Can Teach Themselves to Use Tools[EB/OL]. arXiv preprint arXiv:2302.04761, 2023."
+      },
+      {
+        "id": "langgraph2024",
+        "type": "misc",
+        "title": "LangGraph: Stateful, Multi-Actor Applications with LLMs",
+        "authors": [
+          "LangChain"
+        ],
+        "year": 2024,
+        "venue": "Online",
+        "url": "https://langchain-ai.github.io/langgraph/",
+        "gb7714": "LangChain. LangGraph: Stateful, Multi-Actor Applications with LLMs[Z]. Online, 2024. (https://langchain-ai.github.io/langgraph/)."
+      },
+      {
+        "id": "anthropic2025skills",
+        "type": "misc",
+        "title": "Agent Skills Specification",
+        "authors": [
+          "Anthropic"
+        ],
+        "year": 2025,
+        "venue": "Online",
+        "url": "https://docs.anthropic.com/skills",
+        "gb7714": "Anthropic. Agent Skills Specification[Z]. Online, 2025. (https://docs.anthropic.com/skills)."
+      },
+      {
+        "id": "liu2024scholarly",
+        "type": "journal",
+        "title": "Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools",
+        "authors": [
+          "Yiren Liu",
+          "Eric Wang",
+          "Kexin Cheng",
+          "Linda Liu",
+          "Daniel Klein"
+        ],
+        "year": 2024,
+        "venue": "ACM Computing Surveys",
+        "gb7714": "Liu Y, Wang E, Cheng K, 等. Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools[J]. ACM Computing Surveys, 2024."
+      }
+    ],
+    "open_questions": []
+  },
+  "formatting_constraints": {
+    "citation_style": "GB/T 7714",
+    "heading_rules": {
+      "max_level": 3,
+      "abstract_heading": "## 摘要"
+    },
+    "reference_rules": {
+      "in_text_style": "numeric-bracket",
+      "bibliography_style": "gb7714"
+    },
+    "export_format": "markdown"
+  }
+}
