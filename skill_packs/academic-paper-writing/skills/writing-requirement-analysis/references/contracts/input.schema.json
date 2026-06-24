@@ -2,40 +2,49 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "WritingRequirementAnalysisInput",
   "type": "object",
-  "required": ["argument_brief"],
+  "required": ["argument_brief", "references_seed"],
   "properties": {
     "user_request": {"type": "string"},
     "argument_brief": {
       "type": "object",
-      "required": ["core_claim", "contributions", "venue"],
+      "required": ["topic", "core_claim", "core_arguments", "contributions", "venue", "scope"],
       "properties": {
-        "topic": {"type": "string"},
+        "topic": {"type": "string", "minLength": 1},
         "problem": {"type": "object"},
         "gap": {"type": "object"},
-        "core_claim": {"type": "string"},
+        "core_claim": {"type": "string", "minLength": 1},
         "contribution_name": {"type": "string"},
-        "core_arguments": {"type": "array", "items": {"type": "string"}},
-        "contributions": {"type": "array", "items": {"type": "string"}},
+        "core_arguments": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "contributions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
         "innovation_points": {"type": "array", "items": {"type": "string"}},
         "venue": {
           "type": "object",
-          "required": ["paper_type", "journal"],
+          "required": ["paper_type", "word_limit", "language"],
           "properties": {
             "paper_type": {"type": "string"},
             "journal": {"type": "string"},
             "level": {"type": "string"},
             "word_limit": {},
-            "language": {"type": "string"},
+            "language": {"type": "string", "minLength": 1},
             "style_profile": {"type": "object"}
           }
         },
-        "scope": {"type": "object"},
+        "scope": {
+          "type": "object",
+          "required": ["boundary"],
+          "properties": {
+            "domain": {"type": "string"},
+            "subtopics": {"type": "array", "items": {"type": "string"}},
+            "boundary": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": true
+        },
         "section_plan": {"type": "array", "items": {"type": "object"}},
         "narrative_spine": {"type": "string"},
         "evidence_plan": {"type": "array"}
       }
     },
-    "references_seed": {"type": "array", "items": {"type": "object"}},
+    "references_seed": {"type": "array", "minItems": 1, "items": {"type": "object"}},
     "provenance": {"type": "object"}
   },
   "additionalProperties": true

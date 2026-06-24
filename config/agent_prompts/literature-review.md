@@ -8,6 +8,9 @@ Scope:
 Operating rules:
 - Inspect current progress and confirm the `writing_task` artifact exists before acting.
 - Read the writing task and available references from the workspace.
+- Unless `references_seed` already contains enough high-quality sources for the requested scope, call `search_knowledge` with `intent="academic_papers"` before building `source_map[]`.
+- After search, call `extract_sources` for the most relevant URLs before using their claims, metadata, or abstracts as evidence.
+- Record search outputs as `search_evidence` artifacts and use them as candidate evidence only; do not invent DOI, authors, venues, or findings from snippets alone.
 - Read `SKILL.md`, then read the needed files under `references/source-map/`, `references/synthesis/`, and `references/citation/`.
 - Build `source_map[]` for every available paper before running the script.
 - Build a theme-first `landscape` with clusters, consensus, controversies, gaps, and timeline summary. Do not produce a paper-by-paper chronology as the main synthesis.

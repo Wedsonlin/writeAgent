@@ -1,136 +1,277 @@
-% writeAgent demo case · seed references (~15 entries)
-% Covers: LLM Agents, ReAct, tool use, Anthropic Skills, OpenClaw, academic writing assistants.
-% Entry keys are stable across the project (Skill 2 uses them as paper.id).
+% AI Infra survey · seed references (~25 entries)
+% Covers: AI infrastructure, distributed training, model parallelism, inference serving,
+% compilers/runtimes, cluster orchestration, vector search, RAG, observability and green AI.
+% Entry keys are stable for downstream writing agents and citation managers.
 
-@article{yao2022react,
-  author    = {Shunyu Yao and Jeffrey Zhao and Dian Yu and Nan Du and Izhak Shafran and Karthik Narasimhan and Yuan Cao},
-  title     = {ReAct: Synergizing Reasoning and Acting in Language Models},
-  journal   = {arXiv preprint arXiv:2210.03629},
+@inproceedings{rajbhandari2020zero,
+  author    = {Samyam Rajbhandari and Jeff Rasley and Olatunji Ruwase and Yuxiong He},
+  title     = {ZeRO: Memory Optimizations Toward Training Trillion Parameter Models},
+  booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis (SC)},
+  year      = {2020},
+  url       = {https://arxiv.org/abs/1910.02054},
+  abstract  = {ZeRO partitions optimizer states, gradients and parameters across data-parallel processes to reduce memory redundancy and enable training of trillion-parameter models.}
+}
+
+@inproceedings{rasley2020deepspeed,
+  author    = {Jeff Rasley and Samyam Rajbhandari and Olatunji Ruwase and Yuxiong He},
+  title     = {DeepSpeed: System Optimizations Enable Training Deep Learning Models with Over 100 Billion Parameters},
+  booktitle = {Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2020},
+  url       = {https://www.deepspeed.ai/},
+  abstract  = {DeepSpeed provides a set of system optimizations for large-scale distributed training, including memory optimization, communication efficiency and large-model training support.}
+}
+
+@inproceedings{narayanan2021megatron,
+  author    = {Deepak Narayanan and Mohammad Shoeybi and Jared Casper and Patrick LeGresley and Mostofa Patwary and Vijay Korthikanti and Dmitri Vainbrand and Prethvi Kashinkunti and Julie Bernauer and Bryan Catanzaro},
+  title     = {Efficient Large-Scale Language Model Training on GPU Clusters Using Megatron-LM},
+  booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis (SC)},
+  year      = {2021},
+  url       = {https://arxiv.org/abs/2104.04473},
+  abstract  = {Megatron-LM integrates tensor, pipeline and data parallelism to train large language models efficiently on GPU clusters.}
+}
+
+@article{shoeybi2019megatronlm,
+  author    = {Mohammad Shoeybi and Mostofa Patwary and Raul Puri and Patrick LeGresley and Jared Casper and Bryan Catanzaro},
+  title     = {Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism},
+  journal   = {arXiv preprint arXiv:1909.08053},
+  year      = {2019},
+  url       = {https://arxiv.org/abs/1909.08053},
+  abstract  = {This early Megatron-LM work demonstrates intra-layer model parallelism for training multi-billion-parameter transformer language models.}
+}
+
+@article{lepikhin2020gshard,
+  author    = {Dmitry Lepikhin and HyoukJoong Lee and Yuanzhong Xu and Dehao Chen and Orhan Firat and Yanping Huang and Maxim Krikun and Noam Shazeer and Zhifeng Chen},
+  title     = {GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding},
+  journal   = {arXiv preprint arXiv:2006.16668},
+  year      = {2020},
+  url       = {https://arxiv.org/abs/2006.16668},
+  abstract  = {GShard introduces automatic sharding and conditional computation techniques for scaling multilingual neural machine translation models.}
+}
+
+@article{fedus2022switch,
+  author    = {William Fedus and Barret Zoph and Noam Shazeer},
+  title     = {Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity},
+  journal   = {Journal of Machine Learning Research},
+  volume    = {23},
+  number    = {120},
+  pages     = {1--39},
   year      = {2022},
-  doi       = {10.48550/arXiv.2210.03629},
-  url       = {https://arxiv.org/abs/2210.03629},
-  abstract  = {We propose ReAct, a paradigm that interleaves chain-of-thought reasoning with task-specific actions to enable large language models to act as autonomous agents.}
+  url       = {https://jmlr.org/papers/v23/21-0998.html},
+  abstract  = {Switch Transformer simplifies mixture-of-experts routing and shows how sparse activation can scale model capacity while controlling compute cost.}
 }
 
-@article{schick2023toolformer,
-  author    = {Timo Schick and Jane Dwivedi-Yu and Roberto Dess{\`i} and Roberta Raileanu and Maria Lomeli and Luke Zettlemoyer and Nicola Cancedda and Thomas Scialom},
-  title     = {Toolformer: Language Models Can Teach Themselves to Use Tools},
-  journal   = {arXiv preprint arXiv:2302.04761},
+@inproceedings{zheng2022alpa,
+  author    = {Lianmin Zheng and Zhuohan Li and Hao Zhang and Yonghao Zhuang and Zhifeng Chen and Yuanzhong Xu and Joseph E. Gonzalez and Ion Stoica},
+  title     = {Alpa: Automating Inter- and Intra-Operator Parallelism for Distributed Deep Learning},
+  booktitle = {Proceedings of the 16th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2022},
+  url       = {https://www.usenix.org/conference/osdi22/presentation/zheng-lianmin},
+  abstract  = {Alpa automates parallelization across inter-operator and intra-operator dimensions, reducing manual distributed training strategy design.}
+}
+
+@inproceedings{barham2022pathways,
+  author    = {Paul Barham and Aakanksha Chowdhery and Jeff Dean and Sanjay Ghemawat and Steven Hand and Daniel Hurt and Michael Isard and Hyeontaek Lim and Ruoming Pang and Sudip Roy and Brennan Saeta and Parker Schuh and Ryan Sepassi and Laurent Shafey and Chandu Thekkath and Yonghui Wu},
+  title     = {Pathways: Asynchronous Distributed Dataflow for ML},
+  booktitle = {Proceedings of Machine Learning and Systems (MLSys)},
+  year      = {2022},
+  url       = {https://proceedings.mlsys.org/paper_files/paper/2022/hash/98dce83da57b0395e163467c9dae521b-Abstract.html},
+  abstract  = {Pathways is an asynchronous distributed dataflow system designed to support large-scale and heterogeneous machine learning workloads.}
+}
+
+@article{chowdhery2023palm,
+  author    = {Aakanksha Chowdhery and Sharan Narang and Jacob Devlin and Maarten Bosma and Gaurav Mishra and Adam Roberts and Paul Barham and Hyung Won Chung and Charles Sutton and Sebastian Gehrmann and Parker Schuh and Kensen Shi and Sasha Tsvyashchenko and Joshua Maynez and Abhishek Rao and Parker Barnes and Yi Tay and Noam Shazeer and Vinodkumar Prabhakaran and Emily Reif and Nan Du and Ben Hutchinson and Reiner Pope and James Bradbury and Jacob Austin and Michael Isard and Guy Gur-Ari and Pengcheng Yin and Toju Duke and Anselm Levskaya and Sanjay Ghemawat and Sunipa Dev and Henryk Michalewski and Xavier Garcia and Vedant Misra and Kevin Robinson and Liam Fedus and Denny Zhou and Daphne Ippolito and David Luan and Hyeontaek Lim and Barret Zoph and Alexander Spiridonov and Ryan Sepassi and David Dohan and Shivani Agrawal and Mark Omernick and Andrew M. Dai and Thanumalayan Sankaranarayana Pillai and Marie Pellat and Aitor Lewkowycz and Erica Moreira and Rewon Child and Oleksandr Polozov and Katherine Lee and Zongwei Zhou and Xuezhi Wang and Brennan Saeta and Mark Diaz and Orhan Firat and Michele Catasta and Jason Wei and Kathy Meier-Hellstern and Douglas Eck and Jeff Dean and Slav Petrov and Noah Fiedel},
+  title     = {PaLM: Scaling Language Modeling with Pathways},
+  journal   = {Journal of Machine Learning Research},
+  volume    = {24},
+  number    = {240},
+  pages     = {1--113},
   year      = {2023},
-  abstract  = {Toolformer is a language model trained to decide which APIs to call, when to call them, what arguments to pass and how to best incorporate the results.}
+  url       = {https://jmlr.org/papers/v24/22-1144.html},
+  abstract  = {PaLM reports large-scale language model training using the Pathways system and provides an important case for infrastructure-enabled model scaling.}
 }
 
-@article{shinn2023reflexion,
-  author    = {Noah Shinn and Federico Cassano and Edward Berman and Ashwin Gopinath and Karthik Narasimhan and Shunyu Yao},
-  title     = {Reflexion: Language Agents with Verbal Reinforcement Learning},
-  journal   = {arXiv preprint arXiv:2303.11366},
+@inproceedings{moritz2018ray,
+  author    = {Philipp Moritz and Robert Nishihara and Stephanie Wang and Alexey Tumanov and Richard Liaw and Eric Liang and Melih Elibol and Zongheng Yang and William Paul and Michael I. Jordan and Ion Stoica},
+  title     = {Ray: A Distributed Framework for Emerging AI Applications},
+  booktitle = {Proceedings of the 13th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2018},
+  url       = {https://www.usenix.org/conference/osdi18/presentation/moritz},
+  abstract  = {Ray provides a distributed runtime for heterogeneous AI workloads, including training, tuning, simulation and serving.}
+}
+
+@inproceedings{yu2022orca,
+  author    = {Gyeong-In Yu and Joo Seong Jeong and Geon-Woo Kim and Soojeong Kim and Byung-Gon Chun},
+  title     = {Orca: A Distributed Serving System for Transformer-Based Generative Models},
+  booktitle = {Proceedings of the 16th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2022},
+  url       = {https://www.usenix.org/conference/osdi22/presentation/yu},
+  abstract  = {Orca introduces iteration-level scheduling and selective batching for efficient serving of transformer-based generative models.}
+}
+
+@inproceedings{kwon2023vllm,
+  author    = {Woosuk Kwon and Zhuohan Li and Siyuan Zhuang and Ying Sheng and Lianmin Zheng and Cody Hao Yu and Joseph E. Gonzalez and Hao Zhang and Ion Stoica},
+  title     = {Efficient Memory Management for Large Language Model Serving with PagedAttention},
+  booktitle = {Proceedings of the 29th Symposium on Operating Systems Principles (SOSP)},
   year      = {2023},
-  abstract  = {Reflexion converts feedback signals into linguistic critiques and uses them as in-context reinforcement to improve agent performance over time.}
+  url       = {https://arxiv.org/abs/2309.06180},
+  abstract  = {vLLM proposes PagedAttention to manage KV cache memory efficiently and improve throughput for large language model serving.}
 }
 
-@article{wang2024agentsurvey,
-  author    = {Lei Wang and Chen Ma and Xueyang Feng and Zeyu Zhang and Hao Yang and Jingsen Zhang and Zhiyuan Chen and Jiakai Tang and Xu Chen and Yankai Lin and Wayne Xin Zhao and Zhewei Wei and Ji-Rong Wen},
-  title     = {A Survey on Large Language Model based Autonomous Agents},
-  journal   = {arXiv preprint arXiv:2308.11432},
+@article{agrawal2023sarathi,
+  author    = {Amey Agrawal and Ashish Panwar and Jayashree Mohan and Nipun Kwatra and Bhargav S. Gulavani and Ramachandran Ramjee},
+  title     = {SARATHI: Efficient LLM Inference by Piggybacking Decodes with Chunked Prefills},
+  journal   = {arXiv preprint arXiv:2308.16369},
   year      = {2023},
-  abstract  = {This survey systematically reviews LLM-based autonomous agents, covering agent architecture, planning, memory, tool use and applications.}
+  url       = {https://arxiv.org/abs/2308.16369},
+  abstract  = {Sarathi studies chunked prefill and decode piggybacking to improve throughput and latency trade-offs in LLM inference.}
 }
 
-@article{xi2023potential,
-  author    = {Zhiheng Xi and Wenxiang Chen and Xin Guo and Wei He and Yiwen Ding and Boyang Hong and Ming Zhang and Junzhe Wang and Senjie Jin and Enyu Zhou and Rui Zheng and Xiaoran Fan and Xiao Wang and Limao Xiong and Yuhao Zhou and Weiran Wang and Changhao Jiang and Yicheng Zou and Xiangyang Liu and Zhangyue Yin and Shihan Dou and Rongxiang Weng and Wensen Cheng and Qi Zhang and Wenjuan Qin and Yongyan Zheng and Xipeng Qiu and Xuanjing Huang and Tao Gui},
-  title     = {The Rise and Potential of Large Language Model Based Agents: A Survey},
-  journal   = {arXiv preprint arXiv:2309.07864},
-  year      = {2023},
-  abstract  = {A comprehensive survey on the rise of LLM-based agents covering perception, brain, action modules and societies of agents.}
-}
-
-@inproceedings{park2023generative,
-  author    = {Joon Sung Park and Joseph C. O'Brien and Carrie J. Cai and Meredith Ringel Morris and Percy Liang and Michael S. Bernstein},
-  title     = {Generative Agents: Interactive Simulacra of Human Behavior},
-  booktitle = {Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST)},
-  year      = {2023},
-  abstract  = {Generative agents simulate believable human behavior through memory streams, reflection and planning powered by LLMs.}
-}
-
-@article{liu2023agentbench,
-  author    = {Xiao Liu and Hao Yu and Hanchen Zhang and Yifan Xu and Xuanyu Lei and Hanyu Lai and Yu Gu and Hangliang Ding and Kaiwen Men and Kejuan Yang and Shudan Zhang and Xiang Deng and Aohan Zeng and Zhengxiao Du and Chenhui Zhang and Sheng Shen and Tianjun Zhang and Yu Su and Huan Sun and Minlie Huang and Yuxiao Dong and Jie Tang},
-  title     = {AgentBench: Evaluating LLMs as Agents},
-  journal   = {arXiv preprint arXiv:2308.03688},
-  year      = {2023},
-  abstract  = {AgentBench is a benchmark suite covering 8 environments designed to evaluate LLMs as autonomous agents.}
-}
-
-@inproceedings{wang2024voyager,
-  author    = {Guanzhi Wang and Yuqi Xie and Yunfan Jiang and Ajay Mandlekar and Chaowei Xiao and Yuke Zhu and Linxi Fan and Anima Anandkumar},
-  title     = {Voyager: An Open-Ended Embodied Agent with Large Language Models},
-  booktitle = {Transactions on Machine Learning Research},
+@inproceedings{miao2024specinfer,
+  author    = {Xupeng Miao and Gabriele Oliaro and Zhihao Zhang and Xinhao Cheng and Zeyu Wang and Rae Ying Yee Wong and Zhuoming Chen and David Chiang and Kunle Olukotun and Ion Stoica and Zhihao Jia},
+  title     = {SpecInfer: Accelerating Generative Large Language Model Serving with Speculative Inference and Token Tree Verification},
+  booktitle = {Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
   year      = {2024},
-  abstract  = {Voyager is a lifelong learning agent in Minecraft built on GPT-4 that continuously explores, acquires skills and makes discoveries.}
+  url       = {https://arxiv.org/abs/2305.09781},
+  abstract  = {SpecInfer accelerates generative LLM serving through speculative inference and token-tree verification.}
 }
 
-@misc{anthropic2025skills,
-  author       = {{Anthropic}},
-  title        = {Agent Skills Specification},
+@article{zheng2024sglang,
+  author    = {Lianmin Zheng and Liangsheng Yin and Zhiqiang Xie and Chuyue Sun and Jeff Huang and Cody Hao Yu and Shiyi Cao and Christos Kozyrakis and Ion Stoica and Joseph E. Gonzalez and Clark Barrett and Ying Sheng},
+  title     = {SGLang: Efficient Execution of Structured Language Model Programs},
+  journal   = {arXiv preprint arXiv:2312.07104},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2312.07104},
+  abstract  = {SGLang provides a language and runtime for efficient execution of structured LLM programs, including advanced serving and scheduling optimizations.}
+}
+
+@misc{nvidia2025tensorrtllm,
+  author       = {{NVIDIA}},
+  title        = {TensorRT-LLM},
   howpublished = {Online},
   year         = {2025},
-  url          = {https://docs.anthropic.com/skills},
-  abstract     = {Anthropic's Skills are self-contained, hot-pluggable capability extensions for LLM-based agents, defined as a folder with SKILL.md, scripts, references and assets.}
+  url          = {https://github.com/NVIDIA/TensorRT-LLM},
+  note         = {Accessed: 2026-06-24},
+  abstract     = {TensorRT-LLM is NVIDIA's open-source library for optimizing and deploying large language model inference on NVIDIA GPUs.}
 }
 
-@misc{openclaw2025arch,
-  author       = {{OpenClaw Community}},
-  title        = {OpenClaw: An Open-Source Personal AI Assistant with Skills},
+@misc{vllm2025project,
+  author       = {{vLLM Project}},
+  title        = {vLLM: A High-Throughput and Memory-Efficient Inference and Serving Engine for LLMs},
   howpublished = {Online},
   year         = {2025},
-  url          = {https://docs.openclaw.ai},
-  abstract     = {OpenClaw is an open-source AI assistant platform that adopts the AgentSkills-compatible skill folder format and a ReAct-style brain to dispatch skills.}
+  url          = {https://github.com/vllm-project/vllm},
+  note         = {Accessed: 2026-06-24},
+  abstract     = {The vLLM project implements high-throughput LLM inference with features such as PagedAttention, continuous batching and OpenAI-compatible serving.}
 }
 
-@misc{langgraph2024,
-  author       = {{LangChain}},
-  title        = {LangGraph: Stateful, Multi-Actor Applications with LLMs},
+@inproceedings{dao2022flashattention,
+  author    = {Tri Dao and Daniel Y. Fu and Stefano Ermon and Atri Rudra and Christopher R{\'e}},
+  title     = {FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  url       = {https://arxiv.org/abs/2205.14135},
+  abstract  = {FlashAttention uses IO-aware tiling to reduce memory traffic and accelerate exact attention, becoming a key kernel-level optimization in modern LLM infrastructure.}
+}
+
+@inproceedings{zheng2020ansor,
+  author    = {Lianmin Zheng and Chengfan Jia and Minmin Sun and Zhao Wu and Cody Hao Yu and Ameer Haj-Ali and Yida Wang and Jun Yang and Danyang Zhuo and Koushik Sen and Joseph E. Gonzalez and Ion Stoica},
+  title     = {Ansor: Generating High-Performance Tensor Programs for Deep Learning},
+  booktitle = {Proceedings of the 14th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2020},
+  url       = {https://www.usenix.org/conference/osdi20/presentation/zheng},
+  abstract  = {Ansor is an automated tensor program generation system for optimizing deep learning workloads.}
+}
+
+@article{tillet2019triton,
+  author    = {Philippe Tillet and H. T. Kung and David Cox},
+  title     = {Triton: An Intermediate Language and Compiler for Tiled Neural Network Computations},
+  journal   = {Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages},
+  year      = {2019},
+  url       = {https://dl.acm.org/doi/10.1145/3315508.3329973},
+  abstract  = {Triton provides a language and compiler abstraction for writing high-performance tiled neural network kernels.}
+}
+
+@misc{kubernetes2025overview,
+  author       = {{Kubernetes Documentation}},
+  title        = {Kubernetes Overview},
   howpublished = {Online},
-  year         = {2024},
-  url          = {https://langchain-ai.github.io/langgraph/},
-  abstract     = {LangGraph extends LangChain with a graph-based orchestration model for stateful multi-actor LLM applications, including conditional edges and checkpointing.}
+  year         = {2025},
+  url          = {https://kubernetes.io/docs/concepts/overview/},
+  note         = {Accessed: 2026-06-24},
+  abstract     = {Kubernetes provides container orchestration primitives that underpin many AI training and serving platforms.}
+}
+
+@misc{kserve2025modelserving,
+  author       = {{KServe Project}},
+  title        = {KServe: Standardized Serverless ML Inference Platform on Kubernetes},
+  howpublished = {Online},
+  year         = {2025},
+  url          = {https://kserve.github.io/website/},
+  note         = {Accessed: 2026-06-24},
+  abstract     = {KServe provides model serving, autoscaling and inference-service abstractions on Kubernetes.}
+}
+
+@misc{slurm2025overview,
+  author       = {{SchedMD}},
+  title        = {Slurm Workload Manager Overview},
+  howpublished = {Online},
+  year         = {2025},
+  url          = {https://slurm.schedmd.com/overview.html},
+  note         = {Accessed: 2026-06-24},
+  abstract     = {Slurm is a widely used workload manager for high-performance computing clusters and remains relevant for AI training clusters.}
 }
 
 @article{lewis2020rag,
-  author    = {Patrick Lewis and Ethan Perez and Aleksandra Piktus and Fabio Petroni and Vladimir Karpukhin and Naman Goyal and Heinrich K\"uttler and Mike Lewis and Wen-tau Yih and Tim Rockt\"aschel and Sebastian Riedel and Douwe Kiela},
+  author    = {Patrick Lewis and Ethan Perez and Aleksandra Piktus and Fabio Petroni and Vladimir Karpukhin and Naman Goyal and Heinrich K{\"u}ttler and Mike Lewis and Wen-tau Yih and Tim Rockt{\"a}schel and Sebastian Riedel and Douwe Kiela},
   title     = {Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks},
   journal   = {Advances in Neural Information Processing Systems (NeurIPS)},
   year      = {2020},
-  abstract  = {RAG combines pre-trained parametric and non-parametric memory for language generation on knowledge-intensive tasks.}
+  url       = {https://arxiv.org/abs/2005.11401},
+  abstract  = {RAG combines parametric language models with non-parametric retrieval, motivating infrastructure for vector search, document indexing and retrieval pipelines.}
 }
 
-@inproceedings{wei2022cot,
-  author    = {Jason Wei and Xuezhi Wang and Dale Schuurmans and Maarten Bosma and Brian Ichter and Fei Xia and Ed Chi and Quoc V. Le and Denny Zhou},
-  title     = {Chain-of-Thought Prompting Elicits Reasoning in Large Language Models},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+@inproceedings{khattab2020colbert,
+  author    = {Omar Khattab and Matei Zaharia},
+  title     = {ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT},
+  booktitle = {Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR)},
+  year      = {2020},
+  url       = {https://arxiv.org/abs/2004.12832},
+  abstract  = {ColBERT introduces late interaction for efficient neural retrieval, an important retrieval primitive for modern RAG infrastructure.}
+}
+
+@article{johnson2019faiss,
+  author    = {Jeff Johnson and Matthijs Douze and Herv{\'e} J{\'e}gou},
+  title     = {Billion-Scale Similarity Search with GPUs},
+  journal   = {IEEE Transactions on Big Data},
+  year      = {2019},
+  url       = {https://arxiv.org/abs/1702.08734},
+  abstract  = {FAISS demonstrates GPU-accelerated billion-scale similarity search, providing a foundation for vector database and retrieval infrastructure.}
+}
+
+@article{patterson2021carbon,
+  author    = {David Patterson and Joseph Gonzalez and Quoc Le and Chen Liang and Lluis-Miquel Munguia and Daniel Rothchild and David So and Maud Texier and Jeff Dean},
+  title     = {Carbon Emissions and Large Neural Network Training},
+  journal   = {arXiv preprint arXiv:2104.10350},
+  year      = {2021},
+  url       = {https://arxiv.org/abs/2104.10350},
+  abstract  = {This paper analyzes the carbon emissions of large neural network training and highlights the importance of model, hardware, datacenter and energy choices.}
+}
+
+@article{wu2022sustainableai,
+  author    = {Carole-Jean Wu and Ramya Raghavendra and Udit Gupta and Bilge Acun and Newsha Ardalani and Kiwan Maeng and Gloria Chang and Fiona Aga and Jinshi Huang and Charles Bai and Michael Gschwind and Anurag Gupta and Myle Ott and Anastasia Melnikov and Salvatore Candido and David Brooks and Geeta Chauhan and Benjamin Lee and Hsien-Hsin S. Lee and Bugra Akyildiz and Maximilian Balandat and Joe Spisak and Matt Murphy and Xiaodong Wang and Kim M. Hazelwood},
+  title     = {Sustainable AI: Environmental Implications, Challenges and Opportunities},
+  journal   = {Proceedings of Machine Learning and Systems (MLSys)},
   year      = {2022},
-  abstract  = {Chain-of-thought prompting elicits intermediate reasoning steps from large language models, improving performance on arithmetic, commonsense and symbolic reasoning tasks.}
+  url       = {https://proceedings.mlsys.org/paper_files/paper/2022/hash/462211f67c7d858f663355eff93b745e-Abstract.html},
+  abstract  = {Sustainable AI discusses environmental implications and system-level opportunities for reducing the cost and carbon footprint of AI.}
 }
 
-@article{liu2024scholarly,
-  author    = {Yiren Liu and Eric Wang and Kexin Cheng and Linda Liu and Daniel Klein},
-  title     = {Towards Scholarly Writing Assistance: A Survey of LLM-Powered Academic Writing Tools},
-  journal   = {ACM Computing Surveys},
-  year      = {2024},
-  abstract  = {This survey reviews LLM-based academic writing assistants, focusing on outlining, drafting, citation and polishing tasks, and identifies open challenges around factuality and citation accuracy.}
-}
-
-@article{zhang2024writingbench,
-  author    = {Xinrui Zhang and Wei Liu and Yiming Chen and Ling Wang},
-  title     = {WritingBench: A Benchmark for LLM-based Academic Writing Agents},
-  journal   = {arXiv preprint arXiv:2407.01234},
-  year      = {2024},
-  abstract  = {WritingBench provides 6 sub-tasks for evaluating LLM-based academic writing agents including topic positioning, outlining, drafting, citation management and polishing.}
-}
-
-@inproceedings{huang2024chinese,
-  author    = {Hui Huang and Wei Chen and Jie Wang},
-  title     = {Chinese Academic Writing with Large Language Models: Challenges and Opportunities},
-  booktitle = {Proceedings of CCL 2024},
-  year      = {2024},
-  abstract  = {This paper analyses challenges of using LLMs for Chinese academic writing, with empirical observations on citation, style and plagiarism risk control.}
+@misc{opentelemetry2025docs,
+  author       = {{OpenTelemetry}},
+  title        = {OpenTelemetry Documentation},
+  howpublished = {Online},
+  year         = {2025},
+  url          = {https://opentelemetry.io/docs/},
+  note         = {Accessed: 2026-06-24},
+  abstract     = {OpenTelemetry provides vendor-neutral APIs and tools for traces, metrics and logs, which are increasingly important for production AI platforms.}
 }

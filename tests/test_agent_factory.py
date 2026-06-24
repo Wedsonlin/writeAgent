@@ -44,10 +44,19 @@ def test_agent_factory_builds_deep_agent_with_tools_middleware_and_context(tmp_p
         "polish-plagiarism-agent",
     }
     assert {tool.name for tool in captured["tools"]} == {
-        "ask_user", "execute_bash", "update_artifact_manifest", "update_progress", "inspect_progress", "delegate_to_agent"
+        "ask_user",
+        "execute_bash",
+        "update_artifact_manifest",
+        "update_progress",
+        "inspect_progress",
+        "delegate_to_agent",
+        "search_knowledge",
+        "extract_sources",
     }
     assert {mw.name for mw in captured["middleware"]} == {
         "writeagent_workflow_gate", "writeagent_trace", "writeagent_guardrails"
     }
     assert captured["interrupt_on"]["ask_user"]["allowed_decisions"] == ["respond"]
     assert captured["interrupt_on"]["execute_bash"] is False
+    assert captured["interrupt_on"]["search_knowledge"] is False
+    assert captured["interrupt_on"]["extract_sources"] is False

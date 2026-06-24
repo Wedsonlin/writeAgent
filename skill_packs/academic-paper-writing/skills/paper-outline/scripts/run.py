@@ -10,6 +10,7 @@ def main() -> int:
     data = _load(args.input)
     task = data.get("writing_task", {})
     framework = task.get("chapter_framework") or []
+    allocated_budgets = _chapter_budgets(task, len([item for item in framework if isinstance(item, dict)]))
     sections = [
         {
             "id": str(item.get("chapter_id", idx + 1)),
@@ -18,7 +19,7 @@ def main() -> int:
             "parent_id": None,
             "key_points": item.get("key_points", []),
             "transition_note": "",
-            "word_budget": item.get("word_budget", 1000),
+            "word_budget": item.get("word_budget") if item.get("word_budget") is not None else allocated_budgets[idx],
             "supporting_papers": [],
         }
         for idx, item in enumerate(framework)
@@ -44,6 +45,20 @@ def _write(path: str, payload: dict) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _chapter_budgets(task: dict, count: int) -> list[int]:
+    if count <= 0:
+        return []
+    word_limit = task.get("word_limit") if isinstance(task.get("word_limit"), dict) else {}
+    by_chapter = word_limit.get("by_chapter")
+    if isinstance(by_chapter, list) and len(by_chapter) >= count:
+        return [int(value) for value in by_chapter[:count]]
+    total = int(word_limit.get("total") or 8000)
+    base = total // count
+    budgets = [base for _ in range(count)]
+    budgets[-1] += total - sum(budgets)
+    return budgets
 
 
 if __name__ == "__main__":

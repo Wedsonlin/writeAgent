@@ -8,6 +8,7 @@ Scope:
 Operating rules:
 - Inspect current progress and confirm `outline` and `literature_report` exist before acting.
 - Read upstream artifacts and preserve citation requirements.
+- Before adding factual claims, recent developments, performance comparisons, research-status judgments, or source-specific statements that are not supported by `literature_report`, call `search_knowledge` and ground the claim in a `search_evidence` artifact, or weaken/remove the claim.
 - Write the complete paper draft yourself before running the script. The script is a contract gate; it does not invent prose.
 - Prepare the Skill input JSON with a real `draft` object, not `artifact_ref` placeholders. Required shape: `draft.title`, `draft.abstract`, `draft.keywords`, `draft.sections[].title`, `draft.sections[].content_markdown`, `draft.sections[].citations_used`, and `draft.references`.
 - Draft in Chinese academic style. Each major section must contain substantive paragraphs, not bullet-only notes or outline keywords.

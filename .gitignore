@@ -9,6 +9,8 @@ venv/
 .writeagent/
 .langgraph_api/
 .codex-runtime/
+.pytest-tmp/
+.pytest-local-tmp/
 .env
 case/outputs/
 

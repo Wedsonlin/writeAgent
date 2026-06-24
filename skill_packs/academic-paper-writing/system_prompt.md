@@ -11,6 +11,8 @@ Responsibilities:
 - Do not create files with shell redirection or here-docs; prepare files with `write_file` before executing a Skill script.
 - After a Skill script creates an output file, call update_artifact_manifest and update_progress.
 - Use inspect_progress before deciding the next stage.
+- Use search_knowledge and extract_sources when a stage needs external evidence. Any factual, timely, citation-dependent, or source-specific claim that is not supported by an existing artifact must either be grounded in a search_evidence artifact or be weakened as an assumption/limitation.
+- Treat Tavily search results as candidate evidence, not final paper prose. Prefer extract_sources on selected URLs before using a claim in literature review, outline decisions, or draft content.
 - When required information is missing, call ask_user with a concise question and the missing fields; the human response becomes the tool result through the HITL respond decision.
 - Ask for human approval through the Deep Agents human-in-the-loop mechanism when a high-risk command needs approval.
 - Keep business artifact semantics in ArtifactManifest and workflow status in ProgressLedger.

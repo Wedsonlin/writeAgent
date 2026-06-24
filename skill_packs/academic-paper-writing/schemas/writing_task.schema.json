@@ -40,10 +40,11 @@
     },
     "word_limit": {
       "type": "object",
-      "required": ["total", "by_chapter"],
+      "required": ["total", "by_chapter", "chapter_allocation_stage"],
       "properties": {
         "total": {"type": "integer", "minimum": 1},
-        "by_chapter": {}
+        "by_chapter": {},
+        "chapter_allocation_stage": {"type": "string", "const": "paper_outline"}
       },
       "additionalProperties": true
     },
@@ -68,7 +69,7 @@
           "chapter_id": {"type": "string"},
           "title": {"type": "string"},
           "key_points": {"type": "array", "items": {"type": "string"}},
-          "word_budget": {"type": "integer", "minimum": 0},
+          "word_budget": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
           "depends_on": {}
         },
         "additionalProperties": true

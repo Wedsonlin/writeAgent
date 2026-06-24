@@ -17,3 +17,9 @@ writeagent = "agent_core.runtime:main"
 [tool.setuptools.packages.find]
 include = ["agent_core*", "middleware*", "tools*", "delegation*", "workflows*", "artifacts*", "project_store*", "traces*", "server*"]
 exclude = ["skill_packs*", "case*", "tests*"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+markers = [
+    "integration: tests that call external services",
+]

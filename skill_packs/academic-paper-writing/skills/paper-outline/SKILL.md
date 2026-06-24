@@ -4,7 +4,7 @@
 Produce the `outline` artifact for the academic paper writing workflow stage `paper_outline`.
 
 ## Inputs
-The Agent prepares a JSON input file containing upstream artifact content and task instructions.
+The Agent prepares a JSON input file containing upstream artifact content and task instructions. If `writing_task.word_limit.by_chapter` is `null`, this stage allocates chapter-level word budgets from `writing_task.word_limit.total`.
 
 ## Outputs
 The script writes a JSON output file. The Agent then records it with `update_artifact_manifest` and advances the ProgressLedger with `update_progress`.

@@ -126,7 +126,9 @@ def _configure_general_purpose_subagent(model: Any, *, enabled: bool) -> None:
 def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime: DelegationRuntime) -> list[Any]:
     from tools.ask_user import AskUserInput, ask_user
     from tools.execute_bash import ExecuteBashInput, execute_bash
+    from tools.extract_sources import ExtractSourcesInput, aextract_sources, extract_sources
     from tools.inspect_progress import inspect_progress
+    from tools.search_knowledge import SearchKnowledgeInput, asearch_knowledge, search_knowledge
     from tools.update_artifact_manifest import UpdateArtifactManifestInput, update_artifact_manifest
     from tools.update_progress import UpdateProgressInput, update_progress
     from tools.delegate_to_agent import DelegateToAgentInput, delegate_to_agent
@@ -152,6 +154,20 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
     def delegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
         return delegate_to_agent(delegation_runtime, **kwargs)
 
+    def search_knowledge_tool(**kwargs: Any) -> dict[str, Any]:
+        return search_knowledge(
+            artifact_root=cfg.artifact_root,
+            manifest_path=cfg.manifest_path,
+            **kwargs,
+        )
+
+    def extract_sources_tool(**kwargs: Any) -> dict[str, Any]:
+        return extract_sources(
+            artifact_root=cfg.artifact_root,
+            manifest_path=cfg.manifest_path,
+            **kwargs,
+        )
+
     async def aexecute_bash_tool(command: str, cwd: str | None = None, timeout_sec: int = 60, purpose: str | None = None) -> dict[str, Any]:
         return await asyncio.to_thread(execute_bash_tool, command, cwd=cwd, timeout_sec=timeout_sec, purpose=purpose)
 
@@ -166,6 +182,20 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
 
     async def adelegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
         return await asyncio.to_thread(delegate_to_agent_tool, **kwargs)
+
+    async def asearch_knowledge_tool(**kwargs: Any) -> dict[str, Any]:
+        return await asearch_knowledge(
+            artifact_root=cfg.artifact_root,
+            manifest_path=cfg.manifest_path,
+            **kwargs,
+        )
+
+    async def aextract_sources_tool(**kwargs: Any) -> dict[str, Any]:
+        return await aextract_sources(
+            artifact_root=cfg.artifact_root,
+            manifest_path=cfg.manifest_path,
+            **kwargs,
+        )
 
     return [
         StructuredTool.from_function(
@@ -208,6 +238,23 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             coroutine=adelegate_to_agent_tool,
             args_schema=DelegateToAgentInput,
         ),
+        StructuredTool.from_function(
+            name="search_knowledge",
+            description=(
+                "Search Tavily for academic papers, web background, recent updates, or citation metadata. "
+                "Use this before writing unsupported factual, timely, or citation-dependent content."
+            ),
+            func=search_knowledge_tool,
+            coroutine=asearch_knowledge_tool,
+            args_schema=SearchKnowledgeInput,
+        ),
+        StructuredTool.from_function(
+            name="extract_sources",
+            description="Extract source text from URLs selected from search evidence for citation and claim verification.",
+            func=extract_sources_tool,
+            coroutine=aextract_sources_tool,
+            args_schema=ExtractSourcesInput,
+        ),
     ]
 
 def _build_interrupt_on() -> dict[str, object]:
@@ -220,6 +267,8 @@ def _build_interrupt_on() -> dict[str, object]:
         "update_progress": False,
         "inspect_progress": False,
         "delegate_to_agent": False,
+        "search_knowledge": False,
+        "extract_sources": False,
     }
 
 

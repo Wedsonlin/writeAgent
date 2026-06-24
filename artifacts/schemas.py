@@ -16,6 +16,7 @@ class ArtifactType(str, Enum):
     formatted_draft = "formatted_draft"
     polished_draft = "polished_draft"
     citation_package = "citation_package"
+    search_evidence = "search_evidence"
     other = "other"
 
 

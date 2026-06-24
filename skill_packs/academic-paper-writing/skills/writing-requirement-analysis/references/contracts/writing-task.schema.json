@@ -30,16 +30,26 @@
     },
     "word_limit": {
       "type": "object",
-      "required": ["total", "by_chapter"],
+      "required": ["total", "by_chapter", "chapter_allocation_stage"],
       "properties": {
         "total": {"type": "integer"},
-        "by_chapter": {}
+        "by_chapter": {},
+        "chapter_allocation_stage": {"type": "string"}
       }
     },
     "core_arguments": {"type": "array", "items": {"type": "string"}},
     "innovation_points": {"type": "array", "items": {"type": "string"}},
     "research_scope": {"type": "object"},
-    "chapter_framework": {"type": "array", "items": {"type": "object"}},
+    "chapter_framework": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "word_budget": {"oneOf": [{"type": "integer"}, {"type": "null"}]}
+        },
+        "additionalProperties": true
+      }
+    },
     "references_seed": {"type": "array", "items": {"type": "object"}},
     "missing_info": {"type": "array", "items": {"type": "object"}}
   },

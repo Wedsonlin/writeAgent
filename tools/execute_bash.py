@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+import re
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Literal
@@ -73,6 +75,7 @@ def _execute_bash_blocking(
     repo = Path(repo_root).resolve()
     workdir = resolve_allowed_path(cwd, default=repo, allowed_roots=[repo])
     command = _normalize_virtual_command_paths(command)
+    command = _normalize_python_executable(command)
 
     before = _snapshot(workdir)
     started = time.perf_counter()
@@ -132,3 +135,13 @@ def _normalize_virtual_command_paths(command: str) -> str:
     for virtual_prefix, local_prefix in replacements.items():
         normalized = normalized.replace(virtual_prefix, local_prefix)
     return normalized
+
+
+def _normalize_python_executable(command: str) -> str:
+    return re.sub(
+        r"^\s*(python|python3|py)(?:\.exe)?(?=\s)",
+        lambda _match: f'"{sys.executable}"',
+        command,
+        count=1,
+        flags=re.IGNORECASE,
+    )
