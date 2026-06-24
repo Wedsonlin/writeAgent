@@ -13,11 +13,12 @@
     "research_scope",
     "chapter_framework",
     "references_seed",
+    "task_book_sections",
     "missing_info"
   ],
   "properties": {
     "topic": {"type": "string", "minLength": 1},
-    "paper_type": {"type": "string", "enum": ["system", "survey", "empirical", "theoretical"]},
+    "paper_type": {"type": "string", "enum": ["survey", "research"]},
     "language": {"type": "string"},
     "target_journal": {
       "type": "object",
@@ -76,6 +77,74 @@
       }
     },
     "references_seed": {"type": "array", "items": {"type": "object"}},
+    "task_book_sections": {
+      "type": "object",
+      "required": [
+        "confirmation_sources_and_assumptions",
+        "downstream_constraints",
+        "argument_evidence_matrix",
+        "target_venue_format_points"
+      ],
+      "properties": {
+        "confirmation_sources_and_assumptions": {
+          "type": "object",
+          "required": ["confirmed_sources", "assumptions"],
+          "properties": {
+            "confirmed_sources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["field", "source"],
+                "properties": {
+                  "field": {"type": "string"},
+                  "source": {"type": "string"}
+                },
+                "additionalProperties": true
+              }
+            },
+            "assumptions": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        },
+        "downstream_constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stage", "constraint"],
+            "properties": {
+              "stage": {"type": "string"},
+              "constraint": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "argument_evidence_matrix": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["argument", "evidence_needs"],
+            "properties": {
+              "argument": {"type": "string"},
+              "evidence_needs": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": true
+          }
+        },
+        "target_venue_format_points": {
+          "type": "object",
+          "required": ["target_name", "level", "citation_style", "tone", "structure_hint"],
+          "properties": {
+            "target_name": {"type": "string"},
+            "level": {"type": "string"},
+            "citation_style": {"type": "string"},
+            "tone": {"type": "string"},
+            "structure_hint": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "missing_info": {
       "type": "array",
       "items": {

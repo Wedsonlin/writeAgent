@@ -35,14 +35,15 @@ def build_writing_task_payload(data: dict[str, Any], output_path: str | Path | N
         raise ContractError("writing requirement input is missing critical argument brief fields", missing)
 
     venue = _expect_mapping(brief.get("venue"), "argument_brief.venue")
+    paper_type = _paper_type(venue)
     word_limit = _word_limit(venue)
     topic = _topic(data, brief)
-    section_plan = brief.get("section_plan") or _default_sections(str(venue.get("paper_type")))
+    section_plan = brief.get("section_plan") or _default_sections(paper_type)
     target_journal, profile_matched = _target_journal(venue)
 
     writing_task = {
         "topic": topic,
-        "paper_type": str(venue["paper_type"]),
+        "paper_type": paper_type,
         "language": str(venue["language"]),
         "target_journal": target_journal,
         "word_limit": word_limit,
@@ -53,6 +54,9 @@ def build_writing_task_payload(data: dict[str, Any], output_path: str | Path | N
         "references_seed": _reference_seed(data),
         "missing_info": [],
     }
+    provenance = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
+    evidence_plan = brief.get("evidence_plan") if isinstance(brief.get("evidence_plan"), list) else []
+    writing_task["task_book_sections"] = _task_book_sections(writing_task, provenance, evidence_plan)
     _validate_schema(writing_task, _load_json(LOCAL_WRITING_TASK_SCHEMA_PATH), "writing_task")
     _validate_schema(writing_task, _load_json(PACK_WRITING_TASK_SCHEMA_PATH), "writing_task")
 
@@ -80,7 +84,7 @@ def _critical_missing_fields(data: dict[str, Any], brief: dict[str, Any]) -> lis
         "argument_brief.core_arguments": brief.get("core_arguments"),
         "argument_brief.contributions": brief.get("contributions"),
         "argument_brief.venue.paper_type": venue.get("paper_type"),
-        "argument_brief.venue.journal_or_level": venue.get("journal") or venue.get("name") or venue.get("level"),
+        "argument_brief.venue.target_name": _raw_target_venue_name(venue),
         "argument_brief.venue.word_limit": venue.get("word_limit"),
         "argument_brief.venue.language": venue.get("language"),
         "argument_brief.scope.boundary": scope.get("boundary"),
@@ -120,14 +124,88 @@ def _word_limit(venue: dict[str, Any]) -> dict[str, Any]:
     return {"total": total, "by_chapter": None, "chapter_allocation_stage": "paper_outline"}
 
 
+def _paper_type(venue: dict[str, Any]) -> str:
+    raw = str(venue.get("paper_type") or "").strip()
+    lowered = raw.lower()
+    survey_values = {"survey", "综述", "综述类论文", "综述论文"}
+    research_values = {"research", "research paper", "研究型论文", "研究论文", "研究型"}
+    if raw in survey_values or lowered in survey_values:
+        return "survey"
+    if raw in research_values or lowered in research_values:
+        return "research"
+    raise ContractError(
+        "paper_type must be survey/综述 or research/研究型论文",
+        ["argument_brief.venue.paper_type"],
+    )
+
+
 def _target_journal(venue: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-    name = str(venue.get("journal") or venue.get("name") or "未指定期刊")
-    level = str(venue.get("level") or "unspecified")
+    name = _target_venue_name(venue)
+    level = _venue_level(venue)
     matched_profile = _profile_from_yaml(name, level)
     style_profile = matched_profile or venue.get("style_profile")
     if not isinstance(style_profile, dict):
         style_profile = _style_profile(name, level)
     return {"name": name, "level": level, "style_profile": style_profile}, matched_profile is not None
+
+
+def _raw_target_venue_name(venue: dict[str, Any]) -> Any:
+    return venue.get("journal") or venue.get("conference") or venue.get("name")
+
+
+def _target_venue_name(venue: dict[str, Any]) -> str:
+    raw = _raw_target_venue_name(venue)
+    if _is_empty(raw):
+        raise ContractError(
+            "target journal or conference name must be explicitly confirmed",
+            ["argument_brief.venue.target_name"],
+        )
+    name = str(raw).strip()
+    if _is_non_specific_target(name):
+        raise ContractError(
+            "target journal or conference name must be specific, not a style reference or venue class",
+            ["argument_brief.venue.target_name"],
+        )
+    return name
+
+
+def _is_non_specific_target(name: str) -> bool:
+    lowered = name.lower()
+    markers = [
+        "待定",
+        "未定",
+        "未锁定",
+        "参考",
+        "风格",
+        "层级",
+        "类别",
+        "待确认",
+        "tbd",
+        "to be determined",
+        "reference style",
+        "style reference",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def _venue_level(venue: dict[str, Any]) -> str:
+    raw = str(venue.get("level") or "").strip()
+    if not raw:
+        return "unspecified"
+    provenance_markers = [
+        "推断",
+        "用户确认",
+        "原文",
+        "已有数据",
+        "建议",
+        "唯一目标",
+        "目标期刊",
+        "目标会议",
+        "target_venue",
+    ]
+    if any(marker in raw for marker in provenance_markers):
+        return "unspecified"
+    return raw
 
 
 def _style_profile(name: str, level: str) -> dict[str, str]:
@@ -143,7 +221,7 @@ def _style_profile(name: str, level: str) -> dict[str, str]:
             "tone": "formal-zh",
             "structure_hint": "摘要-引言-相关工作-方法-实验-讨论-结论-参考文献",
         }
-    return {"citation_style": "GB/T 7714", "tone": "formal-zh", "structure_hint": "按目标期刊模板调整"}
+    return {"citation_style": "GB/T 7714", "tone": "formal-zh", "structure_hint": "按目标期刊/会议模板调整"}
 
 
 def _research_scope(brief: dict[str, Any]) -> dict[str, Any]:
@@ -173,19 +251,24 @@ def _reference_seed(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _default_sections(paper_type: str) -> list[dict[str, Any]]:
-    if paper_type != "system":
-        titles = ["引言", "相关工作", "研究设计", "分析与讨论", "结论"]
-        points = [["背景", "问题"], ["研究脉络"], ["方法或框架"], ["论证与讨论"], ["总结", "未来工作"]]
+    if paper_type == "survey":
+        titles = ["引言", "文献范围与检索策略", "主题分类框架", "代表性工作分析", "挑战与趋势", "结论"]
+        points = [
+            ["背景", "问题定义", "综述贡献"],
+            ["纳入标准", "排除标准", "文献来源"],
+            ["分类维度", "关键概念", "比较框架"],
+            ["方法脉络", "代表性成果", "差异比较"],
+            ["研究空白", "发展趋势", "开放问题"],
+            ["总结", "未来研究方向"],
+        ]
     else:
-        titles = ["引言", "相关工作", "系统设计", "关键技术实现", "实验与评测", "案例应用", "讨论", "结论"]
+        titles = ["引言", "相关工作", "方法或系统设计", "实验设计", "结果与讨论", "结论"]
         points = [
             ["背景", "面临的挑战", "本文贡献"],
-            ["既有系统综述与对比"],
-            ["总体架构", "核心模块", "数据流"],
-            ["核心算法", "工程优化"],
-            ["实验设置", "性能与效果"],
-            ["典型案例与效果展示"],
-            ["局限与改进方向"],
+            ["已有方法", "研究空白", "对比定位"],
+            ["核心方法", "系统架构", "关键实现"],
+            ["数据来源", "评价指标", "实验流程"],
+            ["主要结果", "有效性分析", "局限讨论"],
             ["总结", "未来工作"],
         ]
     return [
@@ -227,20 +310,73 @@ def _profile_from_yaml(name: str, level: str) -> dict[str, str] | None:
     return None
 
 
+def _task_book_sections(task: dict[str, Any], provenance: dict[str, Any], evidence_plan: list[Any]) -> dict[str, Any]:
+    journal = task["target_journal"]
+    style = journal["style_profile"]
+    confirmed_sources = [
+        {"field": str(field), "source": str(source)}
+        for field, source in sorted(provenance.items())
+    ]
+    if not confirmed_sources:
+        confirmed_sources = [{"field": "critical_fields", "source": "user_confirmed_or_source_material"}]
+    return {
+        "confirmation_sources_and_assumptions": {
+            "confirmed_sources": confirmed_sources,
+            "assumptions": [
+                "总字数已在需求分析阶段确认，章节字数分配由 paper_outline 阶段完成。",
+                "目标期刊/会议名称已明确，不再使用参考风格或层级作为投稿目标。",
+            ],
+        },
+        "downstream_constraints": [
+            {
+                "stage": "literature_review",
+                "constraint": "围绕核心论点补足可引用证据，不得编造 DOI、作者、出处或实验结果。",
+            },
+            {
+                "stage": "paper_outline",
+                "constraint": "在总字数范围内分配章节字数，并保持本任务书中的目标期刊/会议与论文类型不变。",
+            },
+            {
+                "stage": "draft_writing",
+                "constraint": "按核心论点组织正文，所有事实性断言需要可追溯来源或明确标注为分析判断。",
+            },
+            {
+                "stage": "academic_formatting",
+                "constraint": "优先遵循目标期刊/会议格式要点；未知规则使用 GB/T 7714 与 formal-zh 默认值。",
+            },
+        ],
+        "argument_evidence_matrix": [
+            {"argument": argument, "evidence_needs": _evidence_needs(argument, evidence_plan)}
+            for argument in task["core_arguments"]
+        ],
+        "target_venue_format_points": {
+            "target_name": journal["name"],
+            "level": journal["level"],
+            "citation_style": style.get("citation_style") or "GB/T 7714",
+            "tone": style.get("tone") or "formal-zh",
+            "structure_hint": style.get("structure_hint") or "按目标期刊/会议模板调整",
+        },
+    }
+
+
 def _render_task_book(task: dict[str, Any]) -> str:
     journal = task["target_journal"]
     style = journal["style_profile"]
     word_limit = task["word_limit"]
+    task_sections = task["task_book_sections"]
+    confirmation = task_sections["confirmation_sources_and_assumptions"]
+    format_points = task_sections["target_venue_format_points"]
+    paper_type_label = "综述" if task["paper_type"] == "survey" else "研究型论文"
     lines = [
         f"# 论文写作任务书 · {task['topic']}",
         "",
         "## 一、基本信息",
         "",
         f"- 主题：{task['topic']}",
-        f"- 论文类型：{task['paper_type']}",
+        f"- 论文类型：{paper_type_label}（`{task['paper_type']}`）",
         f"- 写作语言：{task['language']}",
-        f"- 目标期刊：{journal['name']}（级别：{journal['level']}）",
-        f"- 期刊风格：引用 `{style.get('citation_style')}` · 语气 `{style.get('tone')}` · 结构提示：{style.get('structure_hint')}",
+        f"- 目标期刊/会议：{journal['name']}（级别：{journal['level']}）",
+        f"- 目标格式：引用 `{style.get('citation_style')}` · 语气 `{style.get('tone')}` · 结构提示：{style.get('structure_hint')}",
         f"- 总字数：{word_limit['total']}",
         "- 章节字数分配：由 `paper_outline` 阶段完成",
         "",
@@ -276,8 +412,67 @@ def _render_task_book(task: dict[str, Any]) -> str:
     lines.extend(["", "## 五、初始参考文献种子", ""])
     for seed in task["references_seed"]:
         lines.append(f"- [{seed.get('type', 'reference')}] id=`{seed.get('id', '')}` path=`{seed.get('path', '')}`")
-    lines.extend(["", "## 六、待确认信息", "", "- 无；关键写作信息已在需求分析阶段确认。"])
+    lines.extend(["", "## 六、确认来源与假设", ""])
+    for item in confirmation["confirmed_sources"]:
+        lines.append(f"- {item.get('field', '')}: {item.get('source', '')}")
+    lines.extend(f"- 假设：{assumption}" for assumption in confirmation["assumptions"])
+    lines.extend(
+        [
+            "",
+            "## 七、后续阶段约束",
+            "",
+        ]
+    )
+    lines.extend(
+        f"- `{item.get('stage', '')}` 必须{item.get('constraint', '')}"
+        for item in task_sections["downstream_constraints"]
+    )
+    lines.extend(
+        [
+            "",
+            "## 八、核心论点-证据需求矩阵",
+            "",
+            "| 核心论点 | 证据需求 |",
+            "| --- | --- |",
+        ]
+    )
+    for item in task_sections["argument_evidence_matrix"]:
+        evidence_need = "；".join(_string_list(item.get("evidence_needs")))
+        lines.append(f"| {_table_cell(item.get('argument', ''))} | {_table_cell(evidence_need)} |")
+    lines.extend(
+        [
+            "",
+            "## 九、目标期刊/会议格式要点",
+            "",
+            f"- 明确投稿目标：{format_points['target_name']}",
+            f"- 目标级别：{format_points['level']}",
+            f"- 引用规范：{format_points['citation_style']}",
+            f"- 写作语体：{format_points['tone']}",
+            f"- 结构提示：{format_points['structure_hint']}",
+            "",
+            "## 十、待确认信息",
+            "",
+            "- 无；关键写作信息已在需求分析阶段确认。",
+        ]
+    )
     return "\n".join(lines).strip() + "\n"
+
+
+def _evidence_needs(argument: str, evidence_plan: list[Any]) -> list[str]:
+    for item in evidence_plan:
+        if not isinstance(item, dict):
+            continue
+        item_argument = str(item.get("argument") or item.get("claim") or "").strip()
+        if item_argument and item_argument != argument:
+            continue
+        needs = _string_list(item.get("needs") or item.get("evidence_need") or item.get("sources") or item.get("type"))
+        if needs:
+            return needs
+    return ["由 literature_review 阶段围绕该论点匹配可引用文献、方法依据、案例材料或限制讨论。"]
+
+
+def _table_cell(value: Any) -> str:
+    return str(value).replace("|", "\\|").replace("\n", "<br>")
 
 
 def _validate_schema(data: dict[str, Any], schema: dict[str, Any], label: str) -> None:

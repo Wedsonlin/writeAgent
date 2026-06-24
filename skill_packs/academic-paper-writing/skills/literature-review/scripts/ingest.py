@@ -19,6 +19,8 @@ def ingest_references(data: dict[str, Any], input_dir: Path) -> list[dict[str, A
         source_type = seed.get("type")
         if source_type == "bibtex":
             papers.extend(_read_bibtex(seed, input_dir))
+        elif source_type == "paper":
+            papers.append(_metadata_paper(seed))
         elif source_type in {"text", "pdf"}:
             papers.append(_placeholder_paper(seed))
     return papers
@@ -73,6 +75,22 @@ def _placeholder_paper(seed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _metadata_paper(seed: dict[str, Any]) -> dict[str, Any]:
+    title = _clean(seed.get("title") or seed.get("raw") or "")
+    return {
+        "id": _clean(seed.get("id") or seed.get("paper_id") or title or "extra-reference"),
+        "type": _clean(seed.get("paper_type") or seed.get("publication_type") or "paper"),
+        "title": title or "Untitled",
+        "authors": _metadata_authors(seed.get("authors")),
+        "year": _year(seed.get("year")),
+        "venue": _clean(seed.get("venue") or seed.get("journal") or seed.get("booktitle") or ""),
+        "doi": _clean(seed.get("doi")) or None,
+        "url": _clean(seed.get("url")) or None,
+        "abstract": _clean(seed.get("abstract") or ""),
+        "source_kind": _clean(seed.get("source_kind") or "extra_reference"),
+    }
+
+
 def _paper_type(entry_type: Any, venue: str) -> str:
     entry = str(entry_type or "").lower()
     lower_venue = venue.lower()
@@ -89,6 +107,12 @@ def _authors(raw: str) -> list[str]:
     if not raw:
         return []
     return [_clean(part) for part in raw.split(" and ") if _clean(part)]
+
+
+def _metadata_authors(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        return [_clean(author) for author in raw if _clean(author)]
+    return _authors(str(raw or ""))
 
 
 def _year(raw: Any) -> int | None:

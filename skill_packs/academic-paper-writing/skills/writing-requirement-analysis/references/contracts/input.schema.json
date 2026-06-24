@@ -23,6 +23,8 @@
           "properties": {
             "paper_type": {"type": "string"},
             "journal": {"type": "string"},
+            "conference": {"type": "string"},
+            "name": {"type": "string"},
             "level": {"type": "string"},
             "word_limit": {},
             "language": {"type": "string", "minLength": 1},

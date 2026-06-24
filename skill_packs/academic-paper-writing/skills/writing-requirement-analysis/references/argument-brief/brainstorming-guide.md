@@ -49,12 +49,12 @@ Write the result into:
 
 Identify:
 
-- Paper type: `system`, `survey`, `empirical`, or `theoretical`.
-- Target journal, conference, thesis, or course-report style.
+- Paper type: `survey`/“综述” or `research`/“研究型论文”.
+- Concrete target journal or conference name. Do not record only a reference style, level, or venue class.
 - Language and word limit.
 - Citation style if known.
 
-Write the result into `venue`.
+Write the result into `venue`. Use `journal`, `conference`, or `name` for the concrete target. If the user has not confirmed a concrete target, call `ask_user` before proceeding.
 
 ## Phase 5: Research Scope
 
@@ -78,7 +78,7 @@ Each section needs:
 - `word_budget`
 - `depends_on` when it depends on upstream evidence
 
-If exact budgets are unknown, use a reasonable total-level allocation and record `word_limit.by_chapter` as unresolved.
+Do not allocate chapter budgets in this stage. Keep chapter `word_budget` empty/null; the outline stage performs allocation from the confirmed total word limit.
 
 ## Phase 7: Evidence Plan
 

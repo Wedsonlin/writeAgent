@@ -10,11 +10,16 @@
     "controversies",
     "research_gaps",
     "citation_style",
-    "formatted_bibliography"
+    "formatted_bibliography",
+    "report_sections"
   ],
   "properties": {
     "keywords": {"type": "array", "items": {"type": "string"}},
     "papers": {"type": "array", "items": {"type": "object"}},
+    "paper_reading_cards": {"type": "array", "items": {"type": "object"}},
+    "task_alignment": {"type": "object"},
+    "argument_support_matrix": {"type": "array", "items": {"type": "object"}},
+    "innovation_support_matrix": {"type": "array", "items": {"type": "object"}},
     "research_landscape": {
       "type": "object",
       "required": ["clusters", "timeline_summary"],
@@ -26,6 +31,7 @@
     "consensus": {"type": "array", "items": {"type": "string"}},
     "controversies": {"type": "array", "items": {"type": "string"}},
     "research_gaps": {"type": "array", "items": {"type": "string"}},
+    "supplement_search_summary": {"type": "object"},
     "citation_style": {"type": "string"},
     "formatted_bibliography": {
       "type": "object",
@@ -34,6 +40,40 @@
         "gb7714": {"type": "array", "items": {"type": "string"}},
         "apa": {"type": "array", "items": {"type": "string"}}
       }
+    },
+    "report_sections": {
+      "type": "object",
+      "required": [
+        "task_alignment",
+        "research_status",
+        "field_context",
+        "core_literature_viewpoints",
+        "argument_support_matrix",
+        "innovation_support_matrix",
+        "research_gaps",
+        "supplement_search_summary",
+        "references"
+      ],
+      "properties": {
+        "task_alignment": {"type": "object"},
+        "research_status": {"type": "array", "items": {"type": "string"}},
+        "field_context": {"type": "object"},
+        "core_literature_viewpoints": {"type": "array", "items": {"type": "object"}},
+        "argument_support_matrix": {"type": "array", "items": {"type": "object"}},
+        "innovation_support_matrix": {"type": "array", "items": {"type": "object"}},
+        "research_gaps": {"type": "array", "items": {"type": "string"}},
+        "supplement_search_summary": {"type": "object"},
+        "references": {
+          "type": "object",
+          "required": ["gb7714", "apa"],
+          "properties": {
+            "gb7714": {"type": "array", "items": {"type": "string"}},
+            "apa": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     },
     "unmapped_papers": {"type": "array", "items": {"type": "string"}}
   },

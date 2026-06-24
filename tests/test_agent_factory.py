@@ -38,6 +38,7 @@ def test_agent_factory_builds_deep_agent_with_tools_middleware_and_context(tmp_p
     assert {subagent["name"] for subagent in captured["subagents"]} == {
         "requirement-analysis-agent",
         "literature-review-agent",
+        "literature-paper-reader-agent",
         "paper-outline-agent",
         "content-generation-agent",
         "academic-formatting-agent",

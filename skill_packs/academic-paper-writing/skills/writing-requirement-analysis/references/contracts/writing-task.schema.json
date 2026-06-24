@@ -13,11 +13,12 @@
     "research_scope",
     "chapter_framework",
     "references_seed",
+    "task_book_sections",
     "missing_info"
   ],
   "properties": {
     "topic": {"type": "string"},
-    "paper_type": {"type": "string"},
+    "paper_type": {"type": "string", "enum": ["survey", "research"]},
     "language": {"type": "string"},
     "target_journal": {
       "type": "object",
@@ -51,6 +52,29 @@
       }
     },
     "references_seed": {"type": "array", "items": {"type": "object"}},
+    "task_book_sections": {
+      "type": "object",
+      "required": [
+        "confirmation_sources_and_assumptions",
+        "downstream_constraints",
+        "argument_evidence_matrix",
+        "target_venue_format_points"
+      ],
+      "properties": {
+        "confirmation_sources_and_assumptions": {
+          "type": "object",
+          "required": ["confirmed_sources", "assumptions"],
+          "properties": {
+            "confirmed_sources": {"type": "array", "items": {"type": "object"}},
+            "assumptions": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "downstream_constraints": {"type": "array", "items": {"type": "object"}},
+        "argument_evidence_matrix": {"type": "array", "items": {"type": "object"}},
+        "target_venue_format_points": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
     "missing_info": {"type": "array", "items": {"type": "object"}}
   },
   "additionalProperties": true

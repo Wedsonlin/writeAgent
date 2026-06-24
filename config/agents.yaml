@@ -24,6 +24,17 @@ agents:
       skills:
         - skill_packs/academic-paper-writing/skills/literature-review
 
+  - id: literature-paper-reader
+    routing: subagent
+    capability: literature_paper_reading
+    stage_id: literature_review
+    subagent:
+      name: literature-paper-reader-agent
+      description: Read and extract evidence from individual literature sources for the literature review stage.
+      prompt_file: config/agent_prompts/literature-paper-reader.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/literature-review
+
   - id: paper-outline
     routing: subagent
     capability: paper_outline

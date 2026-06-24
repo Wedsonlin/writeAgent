@@ -20,6 +20,7 @@ def test_agent_discovery_loads_default_local_subagents():
     assert names == {
         "requirement-analysis-agent",
         "literature-review-agent",
+        "literature-paper-reader-agent",
         "paper-outline-agent",
         "content-generation-agent",
         "academic-formatting-agent",
@@ -28,6 +29,7 @@ def test_agent_discovery_loads_default_local_subagents():
     assert discovered.registry.all() == []
     assert discovered.disable_general_purpose is True
     assert discovered.capability_routing["requirement_analysis"] == "subagent"
+    assert discovered.capability_routing["literature_paper_reading"] == "subagent"
     assert "requirement-analysis specialist" in discovered.subagents[0]["system_prompt"]
     assert all(Path(skill).is_absolute() for subagent in discovered.subagents for skill in subagent.get("skills", []))
 

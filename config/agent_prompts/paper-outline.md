@@ -8,6 +8,7 @@ Scope:
 Operating rules:
 - Inspect current progress and confirm `writing_task` and `literature_report` exist before acting.
 - Read the upstream artifacts and preserve their constraints.
+- When present, preserve `writing_task.task_book_sections.downstream_constraints` and use `argument_evidence_matrix` to align sections with evidence needs.
 - If research trends, controversies, method comparisons, or section-level support are weak in `literature_report`, call `search_knowledge` and, for selected URLs, `extract_sources` before adding those claims to the outline.
 - Prepare the Skill input JSON with section goals, logical links, supporting references, and chapter-level word budgets. When `writing_task.word_limit.by_chapter` is `null`, allocate chapter budgets in this stage from `writing_task.word_limit.total`.
 - Write the Skill input JSON with `write_file` under `/.writeagent/projects/default/artifacts/`.

@@ -8,6 +8,7 @@ Scope:
 Operating rules:
 - Inspect current progress and confirm the `draft` artifact exists before acting.
 - Read the full `draft` and, when available, `writing_task.target_journal.style_profile` for journal formatting preferences.
+- When present, use `writing_task.task_book_sections.target_venue_format_points` as the structured source of target venue formatting constraints.
 - Read `SKILL.md` Input Contract, then `references/formatting/heading-rules.md`, `references/formatting/in-text-citation-rules.md`, and `references/formatting/gb7714-bibliography.md` before editing.
 - Correct headings, in-text `[n]` citations, and bibliography entries where safe; preserve substantive prose and reference metadata.
 - Prepare the Skill input JSON per `references/contracts/input.schema.json`:

@@ -2,61 +2,47 @@
 
 Use this file when `argument_brief.venue.paper_type` or the section plan is unclear.
 
-## `system`
-
-Use for papers whose main contribution is an implemented system, architecture, workflow, platform integration, or engineering framework.
-
-Expected sections:
-
-- 引言
-- 相关工作
-- 系统设计
-- 关键技术实现
-- 实验与评测
-- 案例应用
-- 讨论
-- 结论
+Skill1 supports only two paper types. If the user's wording does not clearly map to one of them, call `ask_user` and ask them to choose “综述” or “研究型论文”.
 
 ## `survey`
 
 Use for papers whose contribution is taxonomy, comparison, trend analysis, and research-gap synthesis.
 
+Accepted user wording:
+
+- 综述
+- 综述类论文
+- 综述论文
+- survey
+
 Expected sections:
 
 - 引言
-- 检索策略与文献范围
-- 主题分类
-- 代表性方法比较
+- 文献范围与检索策略
+- 主题分类框架
+- 代表性工作分析
 - 挑战与趋势
 - 结论
 
-## `empirical`
+## `research`
 
-Use for papers centered on experiment, measurement, benchmark, dataset, or user study.
+Use for research papers whose contribution is a method, system, experiment, theoretical analysis, dataset, case study, or evaluative argument. Skill1 does not split these into subtypes; later stages refine the internal structure.
+
+Accepted user wording:
+
+- 研究型论文
+- 研究论文
+- research
 
 Expected sections:
 
 - 引言
 - 相关工作
-- 研究问题与方法
-- 实验设置
-- 结果分析
-- 有效性威胁
-- 结论
-
-## `theoretical`
-
-Use for conceptual frameworks, formal models, definitions, or proof-oriented papers.
-
-Expected sections:
-
-- 引言
-- 背景与定义
-- 理论框架
-- 性质分析
-- 应用或讨论
+- 方法或系统设计
+- 实验设计
+- 结果与讨论
 - 结论
 
 ## Decision Rule
 
-If a paper mixes system design and survey content, choose `system` when the user's own architecture is the primary contribution. Treat literature synthesis as the support for `相关工作`, not as the main paper type.
+When the paper mixes survey content with an original method, system, experiment, or case analysis, choose `research` if the user's own contribution is the main object of evaluation. Choose `survey` only when literature synthesis itself is the main contribution.

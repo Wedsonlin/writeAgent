@@ -1,4 +1,6 @@
 {
+  "task_book_markdown": "# 论文写作任务书\n\n## 研究方向关键词\n大语言模型 Agent；学术写作辅助；工具编排\n\n## 核心论点\n大脑决策 + Skill 工具调用模式可显著降低学术写作门槛。",
+  "research_keywords": ["大语言模型 Agent", "学术写作辅助", "工具编排"],
   "writing_task": {
     "topic": "面向学术论文写作的智能 Agent 设计与实现",
     "paper_type": "system",
@@ -33,6 +35,21 @@
     "missing_info": []
   },
   "citation_style": "GB/T 7714",
+  "paper_reading_cards": [
+    {
+      "paper_id": "yao2022react",
+      "source_urls": ["https://arxiv.org/abs/2210.03629"],
+      "source_artifact_ids": ["extract-react"],
+      "reading_status": "read",
+      "research_problem_zh": "语言模型如何在推理过程中调用外部工具。",
+      "method_zh": "交替生成 reasoning traces 与 task-specific actions。",
+      "main_claims_zh": ["ReAct 将推理与行动结合，为 LLM Agent 工具调用提供基础范式。"],
+      "evidence_zh": ["论文摘要描述了 reasoning traces 与 task-specific actions 的交替机制。"],
+      "limitations_zh": [],
+      "relevance_to_arguments": [{"core_argument_index": 0, "stance": "supports", "support_strength": "moderate", "evidence_summary_zh": "支撑大脑决策 + 工具调用模式。"}],
+      "relevance_to_innovations": [{"innovation_index": 0, "stance": "background", "support_strength": "moderate", "evidence_summary_zh": "为 Skill 工具调用架构提供上游范式。"}]
+    }
+  ],
   "source_map": [
     {
       "paper_id": "yao2022react",
@@ -41,6 +58,8 @@
       "main_finding": "ReAct 将推理与行动结合，为 LLM Agent 工具调用提供基础范式。",
       "key_claims": ["提出了推理与行动交替的 LLM Agent 范式。"],
       "evidence_strength": "moderate",
+      "source_urls": ["https://arxiv.org/abs/2210.03629"],
+      "source_artifact_ids": ["extract-react"],
       "limitations": [],
       "alignment_to_core": [{"core_argument_index": 0, "stance": "supports", "note": "支撑大脑决策 + 工具调用模式。"}],
       "provenance": {"main_finding": "abstract"}

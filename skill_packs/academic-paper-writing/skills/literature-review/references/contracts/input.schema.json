@@ -5,7 +5,31 @@
   "required": ["writing_task", "source_map", "landscape"],
   "properties": {
     "writing_task": {"type": "object"},
+    "task_book_markdown": {"type": "string"},
+    "task_book_markdown_path": {"type": "string"},
+    "research_keywords": {"type": "array", "items": {"type": "string"}},
     "citation_style": {"type": "string"},
+    "paper_reading_cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["paper_id"],
+        "properties": {
+          "paper_id": {"type": "string"},
+          "source_urls": {"type": "array", "items": {"type": "string"}},
+          "source_artifact_ids": {"type": "array", "items": {"type": "string"}},
+          "reading_status": {"type": "string"},
+          "research_problem_zh": {"type": "string"},
+          "method_zh": {"type": "string"},
+          "main_claims_zh": {"type": "array", "items": {"type": "string"}},
+          "evidence_zh": {"type": "array", "items": {"type": "string"}},
+          "limitations_zh": {"type": "array"},
+          "relevance_to_arguments": {"type": "array", "items": {"type": "object"}},
+          "relevance_to_innovations": {"type": "array", "items": {"type": "object"}}
+        },
+        "additionalProperties": true
+      }
+    },
     "source_map": {
       "type": "array",
       "items": {
@@ -15,28 +39,66 @@
           "paper_id": {"type": "string"},
           "research_question": {"type": "string"},
           "core_method": {"type": "string"},
+          "abstract_zh": {"type": "string"},
           "main_finding": {"type": "string"},
+          "main_finding_zh": {"type": "string"},
           "key_claims": {"type": "array", "items": {"type": "string"}},
+          "key_claims_zh": {"type": "array", "items": {"type": "string"}},
           "evidence_strength": {"type": "string"},
+          "source_urls": {"type": "array", "items": {"type": "string"}},
+          "source_artifact_ids": {"type": "array", "items": {"type": "string"}},
           "limitations": {"type": "array"},
+          "limitations_zh": {"type": "array"},
           "alignment_to_core": {"type": "array"},
           "provenance": {"type": "object"}
         }
       }
     },
+    "argument_support_matrix": {"type": "array", "items": {"type": "object"}},
+    "innovation_support_matrix": {"type": "array", "items": {"type": "object"}},
     "landscape": {
       "type": "object",
       "required": ["clusters"],
       "properties": {
         "keywords": {"type": "array", "items": {"type": "string"}},
+        "keywords_zh": {"type": "array", "items": {"type": "string"}},
         "clusters": {"type": "array", "items": {"type": "object"}},
         "consensus": {"type": "array", "items": {"type": "string"}},
+        "consensus_zh": {"type": "array", "items": {"type": "string"}},
         "controversies": {"type": "array", "items": {"type": "string"}},
+        "controversies_zh": {"type": "array", "items": {"type": "string"}},
         "research_gaps": {"type": "array", "items": {"type": "string"}},
-        "timeline_summary": {"type": "string"}
+        "research_gaps_zh": {"type": "array", "items": {"type": "string"}},
+        "timeline_summary": {"type": "string"},
+        "timeline_summary_zh": {"type": "string"}
       }
     },
-    "extra_references": {"type": "array"}
+    "supplement_search_summary": {"type": "object"},
+    "extra_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "paper_id": {"type": "string"},
+          "title": {"type": "string"},
+          "authors": {
+            "oneOf": [
+              {"type": "array", "items": {"type": "string"}},
+              {"type": "string"}
+            ]
+          },
+          "year": {"oneOf": [{"type": "integer"}, {"type": "string"}, {"type": "null"}]},
+          "venue": {"type": "string"},
+          "doi": {"type": ["string", "null"]},
+          "url": {"type": ["string", "null"]},
+          "abstract": {"type": "string"},
+          "source_kind": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    }
   },
   "additionalProperties": true
 }
