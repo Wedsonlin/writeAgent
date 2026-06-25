@@ -17,3 +17,15 @@ export async function fetchWorkflowProgress(): Promise<WorkflowProgressPayload> 
   }
   return response.json();
 }
+
+export async function fetchCaseRequirement(): Promise<{ path: string; content: string }> {
+  const response = await fetch(`${agentUrl}/api/case/original-requirement`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch case requirement: ${response.status}`);
+  }
+  return response.json();
+}
+
+export function artifactFileUrl(artifactId: string, kind: "json" | "markdown" | "docx" | "pdf"): string {
+  return `${agentUrl}/api/artifacts/${encodeURIComponent(artifactId)}/files/${kind}`;
+}

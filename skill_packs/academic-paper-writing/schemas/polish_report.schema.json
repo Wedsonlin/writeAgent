@@ -14,8 +14,13 @@
       "required": [
         "markdown",
         "markdown_path",
+        "docx_path",
+        "export_status",
+        "template_profile",
+        "template_conformance_report",
         "polish_log",
         "plagiarism_optimization",
+        "polish_report",
         "issues",
         "quality_checks"
       ],
@@ -28,6 +33,24 @@
         "markdown_path": {
           "type": "string",
           "description": "Filesystem path to the Markdown sidecar"
+        },
+        "docx_path": {"type": "string"},
+        "pdf_path": {"type": ["string", "null"]},
+        "template_profile": {"type": ["string", "null"]},
+        "template_source_path": {"type": ["string", "null"]},
+        "template_conformance_report": {
+          "type": "object",
+          "required": ["profile", "checks", "passed"],
+          "additionalProperties": true
+        },
+        "export_status": {
+          "type": "object",
+          "required": ["docx", "pdf"],
+          "properties": {
+            "docx": {"type": "object", "required": ["status", "path"], "additionalProperties": true},
+            "pdf": {"type": "object", "required": ["status"], "additionalProperties": true}
+          },
+          "additionalProperties": true
         },
         "polish_log": {
           "type": "array",
@@ -70,6 +93,11 @@
             "additionalProperties": true
           }
         },
+        "polish_report": {
+          "type": "object",
+          "required": ["total_polish_changes", "total_similarity_suggestions", "warnings", "errors", "export_status"],
+          "additionalProperties": true
+        },
         "issues": {
           "type": "array",
           "items": {
@@ -92,7 +120,7 @@
         },
         "quality_checks": {
           "type": "object",
-          "required": ["tone_academic", "polish_log_present"],
+          "required": ["tone_academic", "polish_log_present", "docx_exported"],
           "properties": {
             "tone_academic": {
               "type": "boolean",
@@ -101,7 +129,9 @@
             "polish_log_present": {
               "type": "boolean",
               "description": "True when polish_log is non-empty and structurally valid"
-            }
+            },
+            "docx_exported": {"type": "boolean"},
+            "pdf_exported": {"type": "boolean"}
           },
           "additionalProperties": true
         },

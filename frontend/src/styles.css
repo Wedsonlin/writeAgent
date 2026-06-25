@@ -393,6 +393,74 @@ input {
   color: var(--accent-blue);
 }
 
+.artifact-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.artifact-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+}
+
+.artifact-item.final {
+  border-color: rgba(61, 122, 83, 0.24);
+  background: var(--accent-green-light);
+}
+
+.artifact-meta {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.artifact-meta strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.artifact-meta span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.artifact-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--accent-blue);
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.artifact-links a:hover {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-light);
+}
+
 .error-banner {
   margin-top: 12px;
   padding: 8px 14px;
@@ -1231,6 +1299,11 @@ input {
   height: 14px;
 }
 
+.input-error {
+  color: var(--accent-red);
+  font-size: 12px;
+}
+
 .chat-input textarea {
   width: 100%;
   min-height: 56px;
@@ -1308,6 +1381,15 @@ input {
   .stage-pill {
     min-width: 80px;
     padding: 8px 6px;
+  }
+
+  .artifact-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .artifact-links {
+    justify-content: flex-start;
   }
 
   .stage-number {

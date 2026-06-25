@@ -16,6 +16,9 @@ Deterministic contracts and style guides for Skill6 (`polish_and_plagiarism`).
 | [`polish/academic-tone-zh.md`](polish/academic-tone-zh.md) | Formal Chinese academic tone; informal phrase avoidance |
 | [`polish/citation-preservation.md`](polish/citation-preservation.md) | Preserve `[n]` markers, headings, and bibliography |
 | [`polish/similarity-reduction.md`](polish/similarity-reduction.md) | `plagiarism_optimization[]` template; no external API |
+| [`polish/protected-claims.md`](polish/protected-claims.md) | Claims and innovation statements that must remain semantically intact |
+| [`polish/document-export.md`](polish/document-export.md) | Final Markdown, DOCX, and optional PDF export contract |
+| [`polish/plagiarism-boundary.md`](polish/plagiarism-boundary.md) | What Skill6 can and cannot claim about plagiarism reduction |
 
 Pack-level envelope schema: [`schemas/polish_report.schema.json`](../../../schemas/polish_report.schema.json).
 

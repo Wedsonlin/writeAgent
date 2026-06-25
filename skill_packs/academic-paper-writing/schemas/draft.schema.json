@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DraftReport",
+  "description": "Pack-level schema for the content_generation stage output envelope",
+  "type": "object",
+  "required": ["artifact_type"],
+  "properties": {
+    "artifact_type": {
+      "type": "string",
+      "const": "draft"
+    },
+    "draft": {
+      "type": "object",
+      "required": [
+        "title",
+        "abstract",
+        "keywords",
+        "sections",
+        "references",
+        "draft_markdown",
+        "draft_markdown_path",
+        "quality_checks"
+      ],
+      "properties": {
+        "title": {"type": "string"},
+        "abstract": {"type": "string"},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["title", "content_markdown"],
+            "properties": {
+              "id": {"type": "string"},
+              "source_outline_section_id": {"type": "string"},
+              "title": {"type": "string"},
+              "level": {"type": "integer", "minimum": 1},
+              "content_markdown": {"type": "string"},
+              "citations_used": {"type": "array", "items": {"type": "string"}},
+              "word_count": {"type": "integer"},
+              "target_word_count": {"type": "integer"},
+              "linked_core_arguments": {"type": "array", "items": {"type": "string"}},
+              "linked_innovation_points": {"type": "array", "items": {"type": "string"}},
+              "evidence_used": {"type": "array"},
+              "data_used": {"type": "array"},
+              "transition_in": {"type": "string"},
+              "transition_out": {"type": "string"},
+              "support_status": {"type": "string"},
+              "section_depth_checks": {
+                "type": "object",
+                "properties": {
+                  "problem_framed": {"type": "boolean"},
+                  "mechanism_explained": {"type": "boolean"},
+                  "evidence_interpreted": {"type": "boolean"},
+                  "comparison_or_tradeoff": {"type": "boolean"},
+                  "limitation_or_boundary": {"type": "boolean"},
+                  "argument_return": {"type": "boolean"}
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "references": {"type": "array"},
+        "argument_trace": {"type": "array"},
+        "innovation_trace": {"type": "array"},
+        "unsupported_claims": {"type": "array"},
+        "open_questions": {"type": "array"},
+        "quality_checks": {"type": "object"},
+        "draft_markdown": {"type": "string"},
+        "draft_markdown_path": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "required": ["message", "fields"],
+      "properties": {
+        "message": {"type": "string"},
+        "fields": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  },
+  "oneOf": [
+    {"required": ["draft"]},
+    {"required": ["error"]}
+  ],
+  "additionalProperties": true
+}

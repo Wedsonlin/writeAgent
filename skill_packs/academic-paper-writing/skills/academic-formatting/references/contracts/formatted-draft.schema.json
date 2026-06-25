@@ -6,6 +6,11 @@
     "normalized_draft",
     "markdown",
     "markdown_path",
+    "docx_path",
+    "export_status",
+    "template_profile",
+    "template_conformance_report",
+    "format_check_report",
     "issues",
     "quality_checks"
   ],
@@ -48,6 +53,59 @@
       "type": "string",
       "description": "Filesystem path to the Markdown sidecar written beside the JSON output"
     },
+    "docx_path": {
+      "type": "string",
+      "description": "Filesystem path to the required formatted DOCX export"
+    },
+    "pdf_path": {
+      "type": ["string", "null"],
+      "description": "Filesystem path to PDF export when generated; null when unavailable"
+    },
+    "template_profile": {
+      "type": ["string", "null"],
+      "description": "Document template profile used by the exporter, e.g. journal_of_software_2025"
+    },
+    "template_source_path": {
+      "type": ["string", "null"],
+      "description": "Template sample path that selected the profile, when available"
+    },
+    "template_conformance_report": {
+      "type": "object",
+      "required": ["profile", "checks", "passed"],
+      "description": "Machine-readable checks for DOCX template conformance",
+      "additionalProperties": true
+    },
+    "export_status": {
+      "type": "object",
+      "required": ["docx", "pdf"],
+      "properties": {
+        "docx": {
+          "type": "object",
+          "required": ["status", "path"],
+          "properties": {
+            "status": {"type": "string", "enum": ["generated"]},
+            "path": {"type": "string"}
+          },
+          "additionalProperties": true
+        },
+        "pdf": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {"type": "string", "enum": ["generated", "unavailable"]},
+            "path": {"type": ["string", "null"]},
+            "reason": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "format_check_report": {
+      "type": "object",
+      "required": ["target_template", "total_issues", "fixed_issues", "warnings", "errors", "export_status"],
+      "additionalProperties": true
+    },
     "issues": {
       "type": "array",
       "items": {
@@ -74,7 +132,7 @@
     },
     "quality_checks": {
       "type": "object",
-      "required": ["headings_normalized", "references_formatted"],
+      "required": ["headings_normalized", "references_formatted", "docx_exported"],
       "properties": {
         "headings_normalized": {
           "type": "boolean",
@@ -83,6 +141,18 @@
         "references_formatted": {
           "type": "boolean",
           "description": "True when in-text citations and bibliography meet style rules"
+        },
+        "figures_tables_labeled": {
+          "type": "boolean",
+          "description": "True when detected figures and tables have numbered captions"
+        },
+        "docx_exported": {
+          "type": "boolean",
+          "description": "True when required DOCX export was generated"
+        },
+        "pdf_exported": {
+          "type": "boolean",
+          "description": "True when optional PDF export was generated"
         }
       },
       "additionalProperties": true

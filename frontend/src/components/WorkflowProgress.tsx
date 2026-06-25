@@ -1,9 +1,10 @@
-import type { WorkflowMeta, WorkflowProgressPayload, StageStatus } from "../types/workflow";
+import { artifactFileUrl } from "../api/workflow";
+import type { ArtifactMeta, WorkflowMeta, WorkflowProgressPayload, StageStatus } from "../types/workflow";
 
 const stageLabels: Record<string, string> = {
   requirement_analysis: "需求分析",
   literature_review: "文献梳理",
-  paper_outline: "大纲撰写",
+  paper_outline: "论文大纲",
   content_generation: "正文生成",
   academic_formatting: "学术格式",
   polish_and_plagiarism: "润色查重",
@@ -26,7 +27,7 @@ interface Props {
 export function WorkflowProgress({ meta, progress, error }: Props) {
   const stages = meta?.stages ?? [];
   const progressByStage = new Map((progress?.stages ?? []).map((stage) => [stage.stage_id, stage]));
-  const artifactCount = progress?.artifacts.length ?? 0;
+  const artifacts = progress?.artifacts ?? [];
 
   return (
     <section className="workflow-panel">
@@ -71,12 +72,75 @@ export function WorkflowProgress({ meta, progress, error }: Props) {
           <line x1="16" y1="17" x2="8" y2="17" />
           <polyline points="10 9 9 9 8 9" />
         </svg>
-        产出文档 <span className="count">{artifactCount}</span>
+        产出文件 <span className="count">{artifacts.length}</span>
       </div>
+
+      {artifacts.length > 0 && (
+        <div className="artifact-list" aria-label="artifact files">
+          {artifacts.map((artifact) => (
+            <ArtifactRow artifact={artifact} key={artifact.artifact_id} />
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+
+function ArtifactRow({ artifact }: { artifact: ArtifactMeta }) {
+  return (
+    <div className={`artifact-item ${artifact.artifact_type === "polished_draft" ? "final" : ""}`}>
+      <div className="artifact-meta">
+        <strong>{artifactLabel(artifact.artifact_type)}</strong>
+        <span>{artifact.artifact_id}</span>
+      </div>
+      <div className="artifact-links">
+        {artifactKinds(artifact.artifact_type).map((kind) => (
+          <a
+            href={artifactFileUrl(artifact.artifact_id, kind)}
+            key={kind}
+            target="_blank"
+            rel="noreferrer"
+            title={kind === "pdf" ? "PDF 可用时打开；不可用时请查看 JSON 中的 export_status" : undefined}
+          >
+            {kindLabel(kind)}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 
 function labelFor(stageId: string): string {
   return stageLabels[stageId] ?? stageId;
+}
+
+function artifactLabel(type: string): string {
+  const labels: Record<string, string> = {
+    writing_task: "写作任务书",
+    literature_report: "文献梳理报告",
+    outline: "论文大纲",
+    draft: "正文初稿",
+    formatted_draft: "格式化中间稿",
+    polished_draft: "最终终稿",
+  };
+  return labels[type] ?? type;
+}
+
+function artifactKinds(type: string): Array<"json" | "markdown" | "docx" | "pdf"> {
+  if (type === "formatted_draft" || type === "polished_draft") {
+    return ["json", "markdown", "docx", "pdf"];
+  }
+  if (type === "draft" || type === "outline" || type === "literature_report" || type === "writing_task") {
+    return ["json", "markdown"];
+  }
+  return ["json"];
+}
+
+function kindLabel(kind: "json" | "markdown" | "docx" | "pdf"): string {
+  return {
+    json: "JSON",
+    markdown: "Markdown",
+    docx: "DOCX",
+    pdf: "PDF",
+  }[kind];
 }

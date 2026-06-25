@@ -11,6 +11,8 @@ venv/
 .codex-runtime/
 .pytest-tmp/
 .pytest-local-tmp/
+.pytest_cache/
+large_tool_results/
 .env
 case/outputs/
 

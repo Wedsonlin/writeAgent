@@ -13,3 +13,4 @@ def test_model_config_uses_openai_compatible_env(monkeypatch):
     assert type(config.model).__name__ == "ChatOpenAI"
     assert getattr(config.model, "model_name") == "qwen-plus"
     assert str(getattr(config.model, "openai_api_base")) == "https://example.test/v1"
+    assert getattr(config.model, "disable_streaming") is True

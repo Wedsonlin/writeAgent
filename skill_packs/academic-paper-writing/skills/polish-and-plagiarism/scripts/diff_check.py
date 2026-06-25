@@ -10,6 +10,13 @@ _HEADING_LINE_RE = re.compile(r"^#{1,6}\s+.+$", re.MULTILINE)
 _CITATION_MARKER_RE = re.compile(r"\[(\d+)\]")
 _BIBLIOGRAPHY_HEADING = "## 参考文献"
 _REPETITIVE_NGRAM_MIN_LEN = 20
+_WORKFLOW_PROCESS_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("本阶段生成", re.compile(r"本阶段生成")),
+    ("阶段产物", re.compile(r"阶段产物")),
+    ("Skill stage artifact", re.compile(r"Skill\s*\d*\s*产物", re.IGNORECASE)),
+    ("scripts/run.py", re.compile(r"scripts[/\\]run\.py")),
+    ("artifact manifest", re.compile(r"artifact\s+manifest", re.IGNORECASE)),
+)
 
 _INFORMAL_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("其实", re.compile(r"其实")),
@@ -39,6 +46,7 @@ def detect_polish_issues(
     if formatted_markdown:
         issues.extend(detect_structure_diff_issues(formatted_markdown, polished_markdown, constraints))
     issues.extend(detect_informal_tone(polished_markdown))
+    issues.extend(detect_workflow_process_artifacts(polished_markdown))
     issues.extend(detect_repetitive_phrasing(polished_markdown, formatted_markdown))
     return issues
 
@@ -73,6 +81,24 @@ def detect_informal_tone(markdown: str) -> list[Issue]:
             "severity": "warning",
             "field": "polished_markdown",
             "message": "informal or non-academic expressions detected: " + ", ".join(matches),
+        }
+    ]
+
+
+def detect_workflow_process_artifacts(markdown: str) -> list[Issue]:
+    body = split_body(markdown)
+    matches: list[str] = []
+    for label, pattern in _WORKFLOW_PROCESS_PATTERNS:
+        if pattern.search(body):
+            matches.append(label)
+    if not matches:
+        return []
+    return [
+        {
+            "code": "workflow_process_artifact",
+            "severity": "warning",
+            "field": "polished_markdown",
+            "message": "workflow/process artifact phrases leaked into the paper body: " + ", ".join(matches),
         }
     ]
 

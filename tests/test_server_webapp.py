@@ -68,6 +68,68 @@ def test_workflow_progress_route_reads_ledger_and_manifest(monkeypatch, tmp_path
     assert payload["artifacts"][0]["artifact_id"] == "writing-task-1"
 
 
+def test_artifact_file_route_serves_registered_sidecars_only(monkeypatch, tmp_path):
+    cfg = _patch_config(monkeypatch, tmp_path)
+    artifact_json = cfg.artifact_root / "formatted.json"
+    markdown = cfg.artifact_root / "formatted.md"
+    docx = cfg.artifact_root / "formatted.docx"
+    artifact_json.write_text(
+        (
+            '{"artifact_type":"formatted_draft","formatted_draft":'
+            '{"markdown_path":"'
+            + str(markdown).replace("\\", "\\\\")
+            + '","docx_path":"'
+            + str(docx).replace("\\", "\\\\")
+            + '","pdf_path":null}}'
+        ),
+        encoding="utf-8",
+    )
+    markdown.write_text("# 格式化稿\n", encoding="utf-8")
+    docx.write_bytes(b"PK\x03\x04fake-docx")
+    manifest = ArtifactManifest.load(cfg.manifest_path)
+    manifest.upsert(
+        ArtifactMeta(
+            artifact_id="formatted-1",
+            artifact_type="formatted_draft",
+            path=str(artifact_json),
+            stage_id="academic_formatting",
+            metadata={"markdown_path": str(markdown)},
+        )
+    )
+    client = TestClient(webapp.app)
+
+    json_response = client.get("/api/artifacts/formatted-1/files/json")
+    markdown_response = client.get("/api/artifacts/formatted-1/files/markdown")
+    docx_response = client.get("/api/artifacts/formatted-1/files/docx")
+    pdf_response = client.get("/api/artifacts/formatted-1/files/pdf")
+    unknown_response = client.get("/api/artifacts/missing/files/json")
+    traversal_response = client.get("/api/artifacts/%2E%2E/files/json")
+
+    assert json_response.status_code == 200
+    assert json_response.json()["artifact_type"] == "formatted_draft"
+    assert markdown_response.status_code == 200
+    assert "格式化稿" in markdown_response.text
+    assert docx_response.status_code == 200
+    assert docx_response.content.startswith(b"PK")
+    assert pdf_response.status_code == 404
+    assert unknown_response.status_code == 404
+    assert traversal_response.status_code == 404
+
+
+def test_case_original_requirement_route_returns_fixed_case_file(monkeypatch, tmp_path):
+    _patch_config(monkeypatch, tmp_path)
+    client = TestClient(webapp.app)
+
+    response = client.get("/api/case/original-requirement")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["path"].endswith("case/00-用户原始需求.md")
+    assert "AI Infrastructure" in payload["content"]
+    assert "seed.bib" in payload["content"]
+    assert "软件学报排版样例2025年版.doc" in payload["content"]
+
+
 def _patch_config(monkeypatch, tmp_path: Path) -> RuntimeConfig:
     cfg = RuntimeConfig(
         repo_root=Path.cwd(),

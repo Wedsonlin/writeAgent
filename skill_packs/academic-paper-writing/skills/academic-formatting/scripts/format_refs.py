@@ -78,7 +78,7 @@ def reference_display_text(ref: Any, *, bibliography_style: str = "gb7714") -> s
         return ""
     if bibliography_style == "gb7714" and ref.get("gb7714"):
         return str(ref["gb7714"]).strip()
-    for key in ("gb7714", "text", "citation", "title"):
+    for key in ("gb7714", "text", "citation", "apa", "reference", "title"):
         value = ref.get(key)
         if value:
             return str(value).strip()

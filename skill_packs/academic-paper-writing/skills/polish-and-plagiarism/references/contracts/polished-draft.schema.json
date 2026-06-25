@@ -6,8 +6,13 @@
   "required": [
     "markdown",
     "markdown_path",
+    "docx_path",
+    "export_status",
+    "template_profile",
+    "template_conformance_report",
     "polish_log",
     "plagiarism_optimization",
+    "polish_report",
     "issues",
     "quality_checks"
   ],
@@ -20,6 +25,54 @@
     "markdown_path": {
       "type": "string",
       "description": "Filesystem path to the Markdown sidecar written beside the JSON output"
+    },
+    "docx_path": {
+      "type": "string",
+      "description": "Filesystem path to the required final DOCX export"
+    },
+    "pdf_path": {
+      "type": ["string", "null"],
+      "description": "Filesystem path to final PDF export when generated; null when unavailable"
+    },
+    "template_profile": {
+      "type": ["string", "null"],
+      "description": "Document template profile inherited from formatted_draft"
+    },
+    "template_source_path": {
+      "type": ["string", "null"],
+      "description": "Template sample path inherited from formatted_draft, when available"
+    },
+    "template_conformance_report": {
+      "type": "object",
+      "required": ["profile", "checks", "passed"],
+      "description": "Machine-readable checks for final DOCX template conformance",
+      "additionalProperties": true
+    },
+    "export_status": {
+      "type": "object",
+      "required": ["docx", "pdf"],
+      "properties": {
+        "docx": {
+          "type": "object",
+          "required": ["status", "path"],
+          "properties": {
+            "status": {"type": "string", "enum": ["generated"]},
+            "path": {"type": "string"}
+          },
+          "additionalProperties": true
+        },
+        "pdf": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {"type": "string", "enum": ["generated", "unavailable"]},
+            "path": {"type": ["string", "null"]},
+            "reason": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     },
     "polish_log": {
       "type": "array",
@@ -64,6 +117,11 @@
       },
       "description": "Similarity-reduction suggestions from Agent; informational only"
     },
+    "polish_report": {
+      "type": "object",
+      "required": ["total_polish_changes", "total_similarity_suggestions", "warnings", "errors", "export_status"],
+      "additionalProperties": true
+    },
     "issues": {
       "type": "array",
       "items": {
@@ -90,7 +148,7 @@
     },
     "quality_checks": {
       "type": "object",
-      "required": ["tone_academic", "polish_log_present"],
+      "required": ["tone_academic", "polish_log_present", "docx_exported"],
       "properties": {
         "tone_academic": {
           "type": "boolean",
@@ -99,6 +157,14 @@
         "polish_log_present": {
           "type": "boolean",
           "description": "True when polish_log is non-empty and structurally valid"
+        },
+        "docx_exported": {
+          "type": "boolean",
+          "description": "True when required final DOCX export was generated"
+        },
+        "pdf_exported": {
+          "type": "boolean",
+          "description": "True when optional final PDF export was generated"
         }
       },
       "additionalProperties": true

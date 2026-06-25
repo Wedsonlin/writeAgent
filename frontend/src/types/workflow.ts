@@ -28,9 +28,11 @@ export interface StageProgress {
 export interface ArtifactMeta {
   artifact_id: string;
   artifact_type: string;
+  schema_name?: string | null;
   path: string;
   summary?: string | null;
   stage_id?: string | null;
+  metadata?: Record<string, unknown>;
   version: number;
 }
 

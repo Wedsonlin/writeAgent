@@ -41,6 +41,7 @@ def test_agent_factory_builds_deep_agent_with_tools_middleware_and_context(tmp_p
         "literature-paper-reader-agent",
         "paper-outline-agent",
         "content-generation-agent",
+        "content-section-writer-agent",
         "academic-formatting-agent",
         "polish-plagiarism-agent",
     }

@@ -38,7 +38,12 @@ def _openai_compatible_model(model: str, *, api_key: str | None, base_url: str |
         raise RuntimeError("langchain-openai is required for WRITEAGENT_LLM_* configuration.") from exc
 
     model_name = model.removeprefix("openai:")
-    kwargs: dict[str, object] = {"model": model_name, "temperature": temperature}
+    disable_streaming = os.getenv("WRITEAGENT_DISABLE_MODEL_STREAMING", "1").lower() not in {"0", "false", "no"}
+    kwargs: dict[str, object] = {
+        "model": model_name,
+        "temperature": temperature,
+        "disable_streaming": disable_streaming,
+    }
     if api_key:
         kwargs["api_key"] = api_key
     if base_url:

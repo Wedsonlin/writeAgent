@@ -1,3 +1,129 @@
 {
-  "type": "object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PaperOutlineArtifact",
+  "type": "object",
+  "required": ["artifact_type", "outline", "outline_markdown", "outline_markdown_path"],
+  "properties": {
+    "artifact_type": {"type": "string", "const": "outline"},
+    "outline_markdown": {"type": "string"},
+    "outline_markdown_path": {"type": "string"},
+    "outline": {
+      "type": "object",
+      "required": [
+        "topic",
+        "paper_type",
+        "total_word_budget",
+        "structure_rationale",
+        "sections",
+        "logic_graph",
+        "argument_coverage",
+        "innovation_coverage",
+        "word_budget_plan",
+        "quality_flags"
+      ],
+      "properties": {
+        "topic": {"type": "string"},
+        "paper_type": {"type": "string"},
+        "total_word_budget": {"type": "integer"},
+        "structure_rationale": {"type": "string"},
+        "sections": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/section"}
+        },
+        "logic_graph": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/logic_edge"}
+        },
+        "argument_coverage": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/coverage"}
+        },
+        "innovation_coverage": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/coverage"}
+        },
+        "word_budget_plan": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/budget"}
+        },
+        "quality_flags": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": [
+        "section_id",
+        "level",
+        "title",
+        "parent_id",
+        "word_budget",
+        "rhetorical_role",
+        "core_points",
+        "linked_core_arguments",
+        "linked_innovation_points",
+        "supporting_papers",
+        "evidence_notes",
+        "transition_in",
+        "transition_out"
+      ],
+      "properties": {
+        "section_id": {"type": "string"},
+        "id": {"type": "string"},
+        "level": {"type": "integer"},
+        "title": {"type": "string"},
+        "parent_id": {"type": ["string", "null"]},
+        "word_budget": {"type": "integer"},
+        "rhetorical_role": {"type": "string"},
+        "core_points": {"type": "array", "items": {"type": "string"}},
+        "key_points": {"type": "array", "items": {"type": "string"}},
+        "linked_core_arguments": {"type": "array", "items": {"type": "string"}},
+        "linked_innovation_points": {"type": "array", "items": {"type": "string"}},
+        "supporting_papers": {"type": "array", "items": {"type": "string"}},
+        "evidence_notes": {"type": "array", "items": {"type": "string"}},
+        "transition_in": {"type": "string"},
+        "transition_out": {"type": "string"},
+        "transition_note": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "logic_edge": {
+      "type": "object",
+      "required": ["from", "to", "relation"],
+      "properties": {
+        "from": {"type": "string"},
+        "to": {"type": "string"},
+        "relation": {"type": "string"}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["support_strength", "supporting_papers", "covered_by_sections"],
+      "properties": {
+        "argument": {"type": "string"},
+        "innovation": {"type": "string"},
+        "support_strength": {"type": "string"},
+        "supporting_papers": {"type": "array", "items": {"type": "string"}},
+        "covered_by_sections": {"type": "array", "items": {"type": "string"}},
+        "claim_mode": {"type": "string"},
+        "treatment": {"type": "string"},
+        "gap": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "budget": {
+      "type": "object",
+      "required": ["section_id", "title", "word_budget"],
+      "properties": {
+        "section_id": {"type": "string"},
+        "title": {"type": "string"},
+        "word_budget": {"type": "integer"}
+      }
+    }
+  }
 }

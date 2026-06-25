@@ -16,6 +16,9 @@ Deterministic contracts and style guides for Skill5 (`academic_formatting`).
 | [`formatting/heading-rules.md`](formatting/heading-rules.md) | Title / abstract / section heading levels; no level jumps |
 | [`formatting/in-text-citation-rules.md`](formatting/in-text-citation-rules.md) | Normalize body citations to `[n]` |
 | [`formatting/gb7714-bibliography.md`](formatting/gb7714-bibliography.md) | GB/T 7714 bibliography list with `[n]` prefix |
+| [`formatting/target-template.md`](formatting/target-template.md) | How to interpret journal/school formatting templates |
+| [`formatting/document-export.md`](formatting/document-export.md) | Markdown, DOCX, and optional PDF export contract |
+| [`formatting/figure-table-captions.md`](formatting/figure-table-captions.md) | Figure/table numbering and caption checks |
 
 Pack-level envelope schema: [`schemas/format_report.schema.json`](../../../schemas/format_report.schema.json).
 

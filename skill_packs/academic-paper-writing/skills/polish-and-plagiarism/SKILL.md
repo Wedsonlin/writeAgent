@@ -1,6 +1,6 @@
 ---
 name: polish-and-plagiarism
-description: 在 Skill5 formatted_draft 基础上润色正文、记录 polish_log 与降重建议，产出 polished_draft。Use when polish_and_plagiarism stage, formatted_draft exists, or user mentions 润色, 查重, 学术语气, polish_log, 降重. 不修正标题层级与引用格式（Skill5）；不重写论点或新增章节（Skill4）；不调用商业查重 API。
+description: 基于 Skill5 formatted_draft 进行最终中文学术润色、重复表达优化建议与终稿导出，产出 polished_draft Markdown + DOCX，PDF 可用时导出。Use when polish_and_plagiarism stage, formatted_draft exists, or user mentions 润色, 查重, 降重, 终稿, polished_draft. 不改变核心论点、引用编号、参考文献或事实结论。
 metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 ---
 
@@ -8,167 +8,85 @@ metadata: {"openclaw":{"requires":{"bins":["python"]}}}
 
 ## Scope
 
-Use this skill only after a `formatted_draft` artifact exists (workflow stage `polish_and_plagiarism`). The deliverable is a `polished_draft` JSON artifact plus a final Markdown sidecar — the last prose stage before export or submission.
+Skill6 是六阶段论文写作流程的最终产出阶段。它基于 `formatted_draft` 进行语言润色、重复表达优化建议和终稿导出，正式输出 `polished_draft`。
 
-Do not use this skill to fix heading levels, unify `[n]` citation markers, or render GB/T 7714 bibliography entries. Those belong to Skill5 (`academic-formatting`). Do not rewrite core arguments, invent new sections, or regenerate references from scratch; those belong to upstream Skill4 (`paper-content-generation`).
+Skill6 不负责修复标题层级、重新排参考文献、补写正文、补充实验或新增文献。若发现格式问题，应记录 warning；不要把 Skill6 变成 Skill5 或 Skill4 的重跑。
 
-This project does **not** integrate commercial plagiarism APIs. `plagiarism_optimization[]` is a structured list of similarity-reduction **suggestions** produced by the Agent from repetitive phrasing and common template wording; the script validates format and records them only.
+本项目不接入商业查重 API。`plagiarism_optimization[]` 是基于输入文本和可选查重报告形成的改写建议，不等同于真实查重结果。
 
-| Role | Responsibility |
-|------|----------------|
-| **Agent** | Read `formatted_draft.markdown`, polish body prose, record `polish_log[]`, produce `plagiarism_optimization[]`; assemble the complete input JSON |
-| **Deterministic script** (`scripts/run.py`) | Validate contract, diff against formatted draft, detect tone/citation/structure issues, emit `issues[]` and `quality_checks`; does not call an LLM or invent prose |
+## Inputs
 
-## Evidence Principles
+优先读取：
 
-- Preserve all factual claims and in-text `[n]` citation markers. Polish may adjust wording around citations but must not remove, renumber, or reorder markers when `preserve_citations` is true (default).
-- Do not delete or rewrite `## 参考文献` entries. Only minor punctuation or whitespace adjustments around bibliography lines are acceptable.
-- Every substantive edit must appear in `polish_log[]` with `section`, `change_type`, and `reason`. An empty log is a blocking failure (`polish_log_present`).
-- Each entry in `protected_claims[]` must remain a **verbatim substring** of `polished_markdown`. Missing protected text causes exit code 1.
-- Pass the **full** `formatted_draft` object (at least `markdown`) to the script so diff checks can run. Do not pass only `artifact_ref` or a partial diff.
-- Record detected problems in `issues[]` with `severity: "warning"`. Structural contract failures (missing markdown, empty log, missing protected claims, markdown under 3000 characters) use exit code 1.
+- `formatted_draft.markdown` 或 `formatted_draft.markdown_path`
+- `formatted_draft` JSON 中的 `docx_path`、`format_check_report`、`issues[]`
+- `formatted_draft.template_profile`、`template_source_path`、`template_conformance_report`：若存在，最终导出必须继承同一模板。
 
-## Workflow
+可选读取：
 
-1. Inspect progress and confirm the `formatted_draft` artifact exists and `polish_and_plagiarism` is not already complete.
-2. Read the full `formatted_draft.markdown`. If available, read `writing_task.target_journal.style_profile.tone` from upstream artifacts to align `polish_constraints.tone` (default `formal-zh`).
-3. Read polish guides before editing:
-   - `references/polish/academic-tone-zh.md` — formal Chinese tone, informal tokens to avoid
-   - `references/polish/citation-preservation.md` — `[n]` markers and bibliography immutability
-   - `references/polish/similarity-reduction.md` — `plagiarism_optimization[]` entry template and scope
-4. Polish the paper text: improve fluency and objectivity, reduce cross-section repetitive phrasing, and note high-similarity spans for `plagiarism_optimization`. Do **not** change heading lines, citation indices, or bibliography entry text.
-5. Prepare an input JSON matching `references/contracts/input.schema.json`. Include `polish_constraints`, `protected_claims`, `citation_constraints`, `polish_log`, and `plagiarism_optimization` when applicable. Example: `assets/input.example.json`.
-6. Run the deterministic script:
+- `plagiarism_report`：外部查重报告，如用户提供。
+- `protected_claims[]`：必须保留的核心论点、创新点或关键表述。
+- `polish_constraints`：语气、语言、引用保护、标题保护。
+
+## Process Knowledge
+
+1. 读取完整格式化稿，确认标题结构、引用编号和参考文献块存在。
+2. 润色中文学术表达：提升严谨性、连贯性、术语一致性，删除口语化和空泛表达。
+3. 降低重复：识别模板化句式、跨段重复、常见套话，给出 `plagiarism_optimization[]` 改写建议。
+4. 严格保护：
+   - 不改变 `protected_claims[]`。
+   - 不删除、重排或改号正文 `[n]` 引用。
+   - 不改变 `## 参考文献` 条目。
+   - 不改变原有事实、数据、结论和文献归属。
+5. 记录 `polish_log[]`，说明每类润色的位置、改动类型和原因。
+6. 删除或改写写作流程泄漏文本，例如“本阶段生成”“阶段产物”“Skill4/Skill5 产物”“scripts/run.py”“ProgressLedger”。自然学术语境中的“发展阶段”可以保留。
+7. 调用 `scripts/run.py` 作为确定性契约门，生成最终 JSON、Markdown sidecar、DOCX，并记录 PDF 状态；Skill6 的 DOCX 必须继承 Skill5 的模板 profile，不得回退为通用样式。
+
+按需阅读：
+
+- `references/polish/academic-tone-zh.md`
+- `references/polish/citation-preservation.md`
+- `references/polish/similarity-reduction.md`
+- `references/polish/protected-claims.md`
+- `references/polish/document-export.md`
+- `references/polish/plagiarism-boundary.md`
+
+## Script Contract
+
+运行脚本：
 
 ```text
 python skill_packs/academic-paper-writing/skills/polish-and-plagiarism/scripts/run.py --input path/to/input.json --output path/to/output.json
 ```
 
-7. On success (exit 0), confirm the Markdown sidecar exists at `polished_draft.markdown_path` (same basename as the JSON output, `.md` extension).
-8. Record the output with `update_artifact_manifest`, advance `polish_and_plagiarism` with `update_progress`, and summarize `polish_log` highlights, `plagiarism_optimization` suggestions, `issues[]`, `quality_checks`, and the Markdown path.
-
-On failure (exit 1), read the `error` payload, fix blocking fields (`polished_markdown` missing, markdown too short, empty `polish_log`, missing `protected_claims` text), and re-run.
-
-When `issues[]` contains `severity: "warning"` entries but exit code is 0, the script still wrote output. Fix tone or citation problems in `polished_markdown`, update `polish_log`, and re-run until `quality_checks` are acceptable or document remaining warnings explicitly.
-
-## Input Contract
-
-Required: `polished_markdown` (Agent-polished full paper Markdown, ≥3000 characters), `polish_log` (non-empty array). Strongly recommended: `formatted_draft.markdown` for diff validation.
-
-Optional: `polish_constraints`, `protected_claims`, `citation_constraints`, `plagiarism_optimization`. Test-only: `accept_formatted_without_changes` (fallback to `formatted_draft.markdown` when `polished_markdown` is empty; `polish_log` must still be non-empty).
-
-When `polish_constraints` is omitted, the script applies these defaults (aligned with `case/01-论文写作任务书.json`):
-
-| Field | Default |
-|-------|---------|
-| `tone` | `formal-zh` |
-| `language` | `zh` |
-| `preserve_citations` | `true` |
-| `preserve_headings` | `true` |
-
-The Agent prepares:
-
-```json
-{
-  "formatted_draft": {
-    "markdown": "# 论文标题\n\n## 摘要\n\n…",
-    "markdown_path": "path/to/formatted.md"
-  },
-  "polished_markdown": "Agent 润色后的完整 Markdown",
-  "polish_constraints": {
-    "tone": "formal-zh",
-    "language": "zh",
-    "preserve_citations": true,
-    "preserve_headings": true
-  },
-  "protected_claims": [
-    "大脑决策与 Skill 工具调用相结合的智能 Agent 系统"
-  ],
-  "citation_constraints": {
-    "style": "numeric-bracket",
-    "forbidden_changes": ["remove_marker", "renumber"]
-  },
-  "polish_log": [
-    {
-      "section": "引言",
-      "change_type": "wording",
-      "before": "其实很重要",
-      "after": "具有关键意义",
-      "reason": "去除口语化表达"
-    }
-  ],
-  "plagiarism_optimization": [
-    {
-      "location": "相关工作",
-      "risk": "high_similarity_phrase",
-      "original": "大语言模型驱动的智能体正在重塑…",
-      "suggestion": "改写为差异化表述并补充本文特有对比维度",
-      "rewrite_hint": "突出 LangGraph + Skill 双轨架构差异"
-    }
-  ]
-}
-```
-
-Schema: `references/contracts/input.schema.json`. Full sample: `assets/input.example.json`. Clean polished input: `assets/polished.sample.json`. Intentionally problematic input for testing: `assets/polished.raw.sample.json`. Formatted baseline: `assets/formatted_draft.sample.json`.
-
-### `polish_log` entry fields
-
-| Field | Required | Values / notes |
-|-------|----------|----------------|
-| `section` | yes | Section title or logical block |
-| `change_type` | yes | `wording`, `deduplication`, `tone`, `clarity`, `other` |
-| `reason` | yes | Why the change was made |
-| `before` | no | Original phrase (may be truncated) |
-| `after` | no | Revised phrase (may be truncated) |
-
-### `plagiarism_optimization` entry fields
-
-| Field | Required | Values / notes |
-|-------|----------|----------------|
-| `location` | yes | Section or paragraph |
-| `risk` | yes | `high_similarity_phrase`, `cross_section_repetition`, `common_template_wording`, `other` |
-| `suggestion` | yes | Recommended rewrite direction |
-| `original` | no | Problematic source phrase |
-| `rewrite_hint` | no | Paper-specific differentiation hint |
-
-## Output Contract
-
-On success the script writes:
+成功输出：
 
 ```json
 {
   "artifact_type": "polished_draft",
   "polished_draft": {
-    "markdown": "# 论文标题\n\n## 摘要\n\n…",
+    "markdown": "# 论文标题\n\n## 摘要\n\n...",
     "markdown_path": "path/to/output.md",
-    "polish_log": [
-      {
-        "section": "引言",
-        "change_type": "wording",
-        "before": "其实很重要",
-        "after": "具有关键意义",
-        "reason": "去除口语化表达"
-      }
-    ],
-    "plagiarism_optimization": [],
-    "issues": [
-      {
-        "code": "informal_tone",
-        "severity": "warning",
-        "field": "polished_markdown",
-        "message": "informal or non-academic expressions detected: 其实"
-      }
-    ],
-    "quality_checks": {
-      "tone_academic": false,
-      "polish_log_present": true
+    "docx_path": "path/to/output.docx",
+    "pdf_path": "path/to/output.pdf 或 null",
+    "template_profile": "journal_of_software_2025",
+    "template_source_path": "case/references/软件学报排版样例2025年版.doc",
+    "template_conformance_report": {},
+    "export_status": {
+      "docx": {"status": "generated", "path": "path/to/output.docx"},
+      "pdf": {"status": "generated 或 unavailable", "path": "path/to/output.pdf 或 null"}
     },
+    "polish_log": [],
+    "plagiarism_optimization": [],
+    "polish_report": {},
+    "issues": [],
+    "quality_checks": {},
     "source_formatted_path": "path/to/formatted.md"
   }
 }
 ```
 
-On failure:
+失败输出：
 
 ```json
 {
@@ -180,61 +98,39 @@ On failure:
 }
 ```
 
-Inner object schema: `references/contracts/polished-draft.schema.json`. Pack envelope: `schemas/polish_report.schema.json`.
+核心 schema：
 
-### Blocking validations (exit 1)
+- `references/contracts/input.schema.json`
+- `references/contracts/polished-draft.schema.json`
 
-| Check | Field(s) |
-|-------|----------|
-| `polished_markdown` present and non-empty | `polished_markdown` |
-| Markdown length ≥ 3000 characters | `polished_markdown` |
-| `polish_log` non-empty; each entry has `section`, `change_type`, `reason` | `polish_log` |
-| Every `protected_claims[]` entry is a substring of polished markdown | `protected_claims[n]` |
+示例输入：
 
-### `issues[]` codes
+- `assets/input.example.json`
+- `assets/polished.sample.json`
+- `assets/polished.raw.sample.json`
+- `assets/formatted_draft.sample.json`
 
-| Code | Typical severity | Meaning |
-|------|------------------|---------|
-| `heading_structure_changed` | `warning` | Heading lines (`^#{1,6}\s`) differ from `formatted_draft.markdown` |
-| `citation_marker_changed` | `warning` | Body `[n]` marker multiset differs from formatted draft |
-| `bibliography_changed` | `warning` | `## 参考文献` entry lines differ (whitespace-normalized) |
-| `informal_tone` | `warning` | Colloquial tokens, exclamation marks, or marketing tone detected |
-| `repetitive_phrasing` | `warning` | Identical sentence fragment ≥20 characters appears more often than in formatted draft |
+## Quality Checks
 
-Diff checks run only when `formatted_draft.markdown` is provided. Informal-tone and repetition checks always run on `polished_markdown`.
+`quality_checks` 至少包含：
 
-### `quality_checks`
+- `polish_log_present`
+- `tone_academic`
+- `docx_exported`
+- `pdf_exported`
 
-Aligned with `workflow.yaml` stage checks:
+`docx_exported` 必须为 true。PDF 失败不阻塞，但要记录 unavailable reason。
 
-- `polish_log_present` — `true` when `polish_log` is non-empty and every entry has `section`, `change_type`, and `reason`
-- `tone_academic` — `true` when no unresolved `warning` remains for `informal_tone`, `citation_marker_changed`, `bibliography_changed`, `heading_structure_changed`, or `repetitive_phrasing`
+## Completion Criteria
 
-Unresolved warnings do not change exit code (still 0) but set `tone_academic` to `false`. The Agent should fix or explicitly report them.
+完成前确认：
 
-### Preserved Markdown structure
-
-Skill6 must leave these blocks unchanged relative to Skill5 output:
-
-| Block | Rule |
-|-------|------|
-| Title and section headings | Same `#` … `######` lines as formatted draft |
-| In-text citations | Same `[n]` indices and counts in body (before `## 参考文献`) |
-| Bibliography | Same `## 参考文献` heading and entry lines |
-| Keywords line | May polish surrounding prose only; do not remove the keywords block |
-
-## Final Checks
-
-Before reporting completion, verify:
-
-- `artifact_type` is `polished_draft` and the script exited 0.
-- `polished_draft.markdown` is non-empty and the `.md` sidecar file exists at `markdown_path`.
-- Rendered Markdown length is at least 3000 characters (blocking gate).
-- `quality_checks.polish_log_present` is `true` — `polish_log` is non-empty and structurally valid.
-- `quality_checks.tone_academic` is `true` — no unresolved informal tone, citation, heading, bibliography, or repetition warnings.
-- Every `protected_claims` string still appears verbatim in the polished markdown.
-- In-text `[n]` markers and `## 参考文献` entries match the formatted draft (when diff checks ran).
-- `plagiarism_optimization` suggestions are summarized for the user; clarify that no external plagiarism API was called.
-- Key `polish_log` entries are mentioned in the Agent summary so the user knows what wording changed.
-- Unresolved `severity: "warning"` items in `issues[]` are listed explicitly; do not claim full academic-tone compliance while warnings remain.
-- The final Markdown sidecar is suitable for export without further Skill5 formatting passes.
+- `artifact_type == "polished_draft"`。
+- `polished_draft.markdown_path` 存在且与 JSON 中 `markdown` 一致。
+- `polished_draft.docx_path` 是 Skill6 重新导出的最终 DOCX，不是 Skill5 的中间 DOCX。
+- 若 Skill5 使用 `journal_of_software_2025`，最终 DOCX 中正文引用必须为右上标，参考文献编号不能上标。
+- `pdf_path` 生成或 `export_status.pdf` 明确 unavailable reason。
+- `polish_log[]` 非空，并能解释主要润色动作。
+- `plagiarism_optimization[]` 是建议，不声称已完成商业查重。
+- 标题、正文 `[n]` 引用、参考文献块、protected claims 未被破坏。
+- 如 `issues[]` 仍有 warning，必须如实报告，不宣称终稿完全无问题。

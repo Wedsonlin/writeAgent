@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useStream } from "@langchain/react";
-import { agentUrl } from "./api/workflow";
+import { agentUrl, fetchCaseRequirement } from "./api/workflow";
 import { ChatPanel } from "./components/ChatPanel";
 import { InterruptCard, type ResumeTarget } from "./components/InterruptCard";
 import { WorkflowProgress } from "./components/WorkflowProgress";
@@ -10,11 +10,11 @@ import type { WorkflowMeta, WorkflowProgressPayload } from "./types/workflow";
 import "./styles.css";
 
 const threadStorageKey = "writeagent_thread_id";
-const caseWorkflowPrompt =
-  "请读取 /case/00-用户原始需求.md 和 /case/references/seed.bib，并基于当前项目的 academic-paper-writing 工作流完整执行论文写作：先做需求分析，再进行文献梳理、论文大纲、正文生成、学术格式化和润色查重。请使用真实 LLM 和项目工具生成最终中文论文 Markdown artifact。请严格遵守工具调用规则：所有 Skill 输入 JSON 必须先用 write_file 写入 /.writeagent/projects/default/artifacts/；不要使用 shell 重定向、here-doc、cat >、echo >、/tmp 或多命令片段；execute_bash 只执行单条 python /skill_packs/.../scripts/run.py --input /.writeagent/projects/default/artifacts/... --output /.writeagent/projects/default/artifacts/... 命令。";
 
 export default function App() {
   const [input, setInput] = useState("");
+  const [caseLoadError, setCaseLoadError] = useState<string | null>(null);
+  const [isLoadingCase, setIsLoadingCase] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(
     () => sessionStorage.getItem(threadStorageKey),
   );
@@ -68,6 +68,19 @@ export default function App() {
     window.location.reload();
   }
 
+  async function handleLoadCaseRequirement() {
+    setCaseLoadError(null);
+    setIsLoadingCase(true);
+    try {
+      const payload = await fetchCaseRequirement();
+      setInput(payload.content);
+    } catch (error) {
+      setCaseLoadError(stringifyError(error) ?? "无法载入 case 原始需求");
+    } finally {
+      setIsLoadingCase(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -113,7 +126,7 @@ export default function App() {
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
           </svg>
-          子Agent: {subagents.length}
+          子 Agent：{subagents.length}
         </span>
         <span className="status-item">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -121,7 +134,7 @@ export default function App() {
             <line x1="3" y1="9" x2="21" y2="9" />
             <line x1="9" y1="21" x2="9" y2="9" />
           </svg>
-          工具结果: {toolResults.length}
+          工具结果：{toolResults.length}
         </span>
       </section>
 
@@ -140,15 +153,16 @@ export default function App() {
 
       <form className="chat-input" onSubmit={handleSubmit}>
         <div className="input-stack">
-          <button className="prompt-chip" type="button" onClick={() => setInput(caseWorkflowPrompt)}>
+          <button className="prompt-chip" type="button" onClick={handleLoadCaseRequirement} disabled={isLoadingCase}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <line x1="8" y1="13" x2="16" y2="13" />
               <line x1="8" y1="17" x2="13" y2="17" />
             </svg>
-            载入 case 指令
+            {isLoadingCase ? "载入中" : "载入 case 需求"}
           </button>
+          {caseLoadError ? <span className="input-error">{caseLoadError}</span> : null}
           <textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}

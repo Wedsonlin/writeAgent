@@ -57,6 +57,17 @@ agents:
       skills:
         - skill_packs/academic-paper-writing/skills/paper-content-generation
 
+  - id: content-section-writer
+    routing: subagent
+    capability: content_section_writing
+    stage_id: content_generation
+    subagent:
+      name: content-section-writer-agent
+      description: Draft individual paper sections from evidence-grounded section cards.
+      prompt_file: config/agent_prompts/content-section-writer.md
+      skills:
+        - skill_packs/academic-paper-writing/skills/paper-content-generation
+
   - id: academic-formatting
     routing: subagent
     capability: academic_formatting

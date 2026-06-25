@@ -15,6 +15,11 @@
         "normalized_draft",
         "markdown",
         "markdown_path",
+        "docx_path",
+        "export_status",
+        "template_profile",
+        "template_conformance_report",
+        "format_check_report",
         "issues",
         "quality_checks"
       ],
@@ -50,6 +55,29 @@
         },
         "markdown": {"type": "string", "minLength": 1},
         "markdown_path": {"type": "string"},
+        "docx_path": {"type": "string"},
+        "pdf_path": {"type": ["string", "null"]},
+        "template_profile": {"type": ["string", "null"]},
+        "template_source_path": {"type": ["string", "null"]},
+        "template_conformance_report": {
+          "type": "object",
+          "required": ["profile", "checks", "passed"],
+          "additionalProperties": true
+        },
+        "export_status": {
+          "type": "object",
+          "required": ["docx", "pdf"],
+          "properties": {
+            "docx": {"type": "object", "required": ["status", "path"], "additionalProperties": true},
+            "pdf": {"type": "object", "required": ["status"], "additionalProperties": true}
+          },
+          "additionalProperties": true
+        },
+        "format_check_report": {
+          "type": "object",
+          "required": ["target_template", "total_issues", "fixed_issues", "warnings", "errors", "export_status"],
+          "additionalProperties": true
+        },
         "issues": {
           "type": "array",
           "items": {
@@ -66,10 +94,13 @@
         },
         "quality_checks": {
           "type": "object",
-          "required": ["headings_normalized", "references_formatted"],
+          "required": ["headings_normalized", "references_formatted", "docx_exported"],
           "properties": {
             "headings_normalized": {"type": "boolean"},
-            "references_formatted": {"type": "boolean"}
+            "references_formatted": {"type": "boolean"},
+            "figures_tables_labeled": {"type": "boolean"},
+            "docx_exported": {"type": "boolean"},
+            "pdf_exported": {"type": "boolean"}
           },
           "additionalProperties": true
         }
