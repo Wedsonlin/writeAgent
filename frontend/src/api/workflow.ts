@@ -1,6 +1,7 @@
 import type { WorkflowMeta, WorkflowProgressPayload } from "../types/workflow";
 
-export const agentUrl = import.meta.env.VITE_AGENT_URL ?? "http://localhost:2024";
+const viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+export const agentUrl = viteEnv?.VITE_AGENT_URL ?? "http://localhost:2024";
 
 export async function fetchWorkflowMeta(): Promise<WorkflowMeta> {
   const response = await fetch(`${agentUrl}/api/workflow/meta`);
@@ -10,8 +11,8 @@ export async function fetchWorkflowMeta(): Promise<WorkflowMeta> {
   return response.json();
 }
 
-export async function fetchWorkflowProgress(): Promise<WorkflowProgressPayload> {
-  const response = await fetch(`${agentUrl}/api/workflow/progress`);
+export async function fetchWorkflowProgress(projectId?: string | null): Promise<WorkflowProgressPayload> {
+  const response = await fetch(workflowProgressUrl(projectId));
   if (!response.ok) {
     throw new Error(`Failed to fetch workflow progress: ${response.status}`);
   }
@@ -26,6 +27,22 @@ export async function fetchCaseRequirement(): Promise<{ path: string; content: s
   return response.json();
 }
 
-export function artifactFileUrl(artifactId: string, kind: "json" | "markdown" | "docx" | "pdf"): string {
-  return `${agentUrl}/api/artifacts/${encodeURIComponent(artifactId)}/files/${kind}`;
+export function workflowProgressUrl(projectId?: string | null): string {
+  const url = new URL(`${agentUrl}/api/workflow/progress`);
+  if (projectId) {
+    url.searchParams.set("project_id", projectId);
+  }
+  return url.toString();
+}
+
+export function artifactFileUrl(
+  artifactId: string,
+  kind: "json" | "markdown" | "docx" | "pdf",
+  projectId?: string | null,
+): string {
+  const url = new URL(`${agentUrl}/api/artifacts/${encodeURIComponent(artifactId)}/files/${kind}`);
+  if (projectId) {
+    url.searchParams.set("project_id", projectId);
+  }
+  return url.toString();
 }

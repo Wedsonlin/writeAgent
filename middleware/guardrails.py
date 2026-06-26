@@ -35,7 +35,11 @@ ALLOWED_COMMAND_PATTERNS = [
     re.compile(
         rf"""^\s*(?:python|python3|py)(?:\.exe)?\s+["']?[\\/]?skill_packs[\\/][^"'\s]+[\\/]skills[\\/][^"'\s\\/]+[\\/]scripts[\\/]run\.py["']?(?:\s+{_ARG_PATTERN})*\s*$""",
         flags=re.IGNORECASE,
-    )
+    ),
+    re.compile(
+        rf"""^\s*(?:python|python3|py)(?:\.exe)?\s+["']?[\\/]?\.writeagent[\\/]projects[\\/][A-Za-z0-9._-]+[\\/]tmp[\\/][^"'\s;&|`$<>]+\.py["']?(?:\s+{_ARG_PATTERN})*\s*$""",
+        flags=re.IGNORECASE,
+    ),
 ]
 
 

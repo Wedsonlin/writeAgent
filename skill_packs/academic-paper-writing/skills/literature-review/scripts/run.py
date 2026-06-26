@@ -26,6 +26,7 @@ def main() -> int:
         return 1
 
     markdown_path = str(Path(args.output).with_suffix(".md"))
+    Path(markdown_path).parent.mkdir(parents=True, exist_ok=True)
     Path(markdown_path).write_text(markdown, encoding="utf-8")
     _write(
         args.output,

@@ -20,6 +20,7 @@ def main() -> int:
         "outline_markdown_path": str(markdown_path),
     }
     _write(output_path, payload)
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_path.write_text(markdown, encoding="utf-8")
     return 0
 

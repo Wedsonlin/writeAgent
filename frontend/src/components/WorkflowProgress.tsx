@@ -22,9 +22,10 @@ interface Props {
   meta: WorkflowMeta | null;
   progress: WorkflowProgressPayload | null;
   error?: string | null;
+  projectId?: string | null;
 }
 
-export function WorkflowProgress({ meta, progress, error }: Props) {
+export function WorkflowProgress({ meta, progress, error, projectId }: Props) {
   const stages = meta?.stages ?? [];
   const progressByStage = new Map((progress?.stages ?? []).map((stage) => [stage.stage_id, stage]));
   const artifacts = progress?.artifacts ?? [];
@@ -78,7 +79,7 @@ export function WorkflowProgress({ meta, progress, error }: Props) {
       {artifacts.length > 0 && (
         <div className="artifact-list" aria-label="artifact files">
           {artifacts.map((artifact) => (
-            <ArtifactRow artifact={artifact} key={artifact.artifact_id} />
+            <ArtifactRow artifact={artifact} key={artifact.artifact_id} projectId={projectId} />
           ))}
         </div>
       )}
@@ -86,7 +87,7 @@ export function WorkflowProgress({ meta, progress, error }: Props) {
   );
 }
 
-function ArtifactRow({ artifact }: { artifact: ArtifactMeta }) {
+function ArtifactRow({ artifact, projectId }: { artifact: ArtifactMeta; projectId?: string | null }) {
   return (
     <div className={`artifact-item ${artifact.artifact_type === "polished_draft" ? "final" : ""}`}>
       <div className="artifact-meta">
@@ -96,7 +97,7 @@ function ArtifactRow({ artifact }: { artifact: ArtifactMeta }) {
       <div className="artifact-links">
         {artifactKinds(artifact.artifact_type).map((kind) => (
           <a
-            href={artifactFileUrl(artifact.artifact_id, kind)}
+            href={artifactFileUrl(artifact.artifact_id, kind, projectId)}
             key={kind}
             target="_blank"
             rel="noreferrer"

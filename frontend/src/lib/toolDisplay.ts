@@ -52,8 +52,10 @@ const toolLabels: Record<string, string> = {
   ask_user: "请求用户补充",
   delegate_to_agent: "委派 Agent",
   execute_bash: "脚本执行",
+  extract_sources: "\u6765\u6e90\u62bd\u53d6",
   inspect_progress: "查看进度",
   read_file: "读取文件",
+  search_knowledge: "\u77e5\u8bc6\u68c0\u7d22",
   task: "子 Agent 任务",
   update_artifact_manifest: "登记产物",
   update_progress: "更新进度",
@@ -69,6 +71,8 @@ const stageLabels: Record<string, string> = {
   polish_and_plagiarism: "润色查重",
   requirement_analysis: "需求分析",
 };
+
+const readOnlyShellCommands = ["Get-Content", "Get-ChildItem", "cat", "type", "ls", "dir", "rg", "rg --files"];
 
 export function buildToolCallDisplay(toolCall: ToolCallDisplayInput): ToolDisplayModel {
   const toolName = toolCall.name ?? "tool_call";
@@ -226,6 +230,10 @@ export function buildToolResultDisplay(result: ToolDisplayInput): ToolDisplayMod
     return progressSnapshotDisplay(toolName, parsedRecord, rawText);
   }
 
+  if (isEvidenceToolName(toolName) && (hasArtifact(parsedRecord) || isLargeToolResultNotice(text))) {
+    return evidenceResultDisplay(toolName, parsedRecord, rawText, text);
+  }
+
   if (parsedRecord?.artifact && typeof parsedRecord.artifact === "object") {
     return artifactResultDisplay(toolName, parsedRecord, rawText);
   }
@@ -271,6 +279,28 @@ export function buildToolResultDisplay(result: ToolDisplayInput): ToolDisplayMod
     paths: uniquePaths(simpleFilePath ? [simpleFilePath] : extractPathsFromText(text)),
     rawText,
   });
+}
+
+export function shouldHideToolResult(result: ToolDisplayInput): boolean {
+  const toolName = result.name ?? "tool";
+  const text = textValue(result.content);
+  const parsed = result.parsed ?? parseJsonText(text);
+  const parsedRecord = asRecord(parsed);
+
+  if (isErrorToolResult(parsedRecord, text)) {
+    return false;
+  }
+
+  if (isReadOnlyToolName(toolName)) {
+    return true;
+  }
+
+  if (toolName === "execute_bash" || looksLikeExecutionResult(parsedRecord)) {
+    const command = stringValue(parsedRecord?.command);
+    return command ? isReadOnlyShellCommand(command) : false;
+  }
+
+  return false;
 }
 
 export function labelForTool(name: string): string {
@@ -427,6 +457,82 @@ function artifactResultDisplay(
   });
 }
 
+function evidenceResultDisplay(
+  toolName: string,
+  parsed: Record<string, unknown> | null,
+  rawText: string,
+  text: string,
+): ToolDisplayModel {
+  const artifact = asRecord(parsed?.artifact);
+  const isExtract = toolName === "extract_sources";
+  const title = isExtract ? "\u6765\u6e90\u62bd\u53d6\u5df2\u4fdd\u5b58" : "\u77e5\u8bc6\u68c0\u7d22\u5df2\u4fdd\u5b58";
+  const resultCount = numberValue(parsed?.result_count);
+  const queryCount = numberValue(parsed?.query_count);
+  const failedCount = numberValue(parsed?.failed_count) ?? numberValue(parsed?.failed_query_count);
+  const urlCount = stringArray(parsed?.urls).length;
+  const offloaded = isLargeToolResultNotice(text);
+  const summary = offloaded
+    ? "\u7ed3\u679c\u8f83\u5927\uff0c\u5df2\u5199\u5165 .writeagent \u8fd0\u884c\u65f6\u4ea7\u7269\u76ee\u5f55"
+    : compactText(
+        [
+          resultCount != null ? `${resultCount} \u6761\u7ed3\u679c` : null,
+          isExtract
+            ? urlCount > 0
+              ? `${urlCount} \u4e2a URL`
+              : null
+            : queryCount != null
+              ? `${queryCount} \u4e2a\u67e5\u8be2`
+              : null,
+          failedCount ? `${failedCount} \u9879\u672a\u5b8c\u6210` : null,
+          "\u5df2\u5199\u5165 .writeagent",
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        140,
+      );
+  return model({
+    kind: "artifact",
+    toolName,
+    title,
+    summary,
+    statusLabel: evidenceStatusLabel(stringValue(parsed?.status), offloaded),
+    statusTone: evidenceStatusTone(stringValue(parsed?.status), offloaded),
+    keyValues: [
+      field("\u7ed3\u679c", resultCount == null ? undefined : String(resultCount)),
+      field(
+        isExtract ? "URL" : "\u67e5\u8be2",
+        isExtract ? (urlCount > 0 ? String(urlCount) : undefined) : queryCount == null ? undefined : String(queryCount),
+      ),
+      field("\u4ea7\u7269", stringValue(artifact?.artifact_id)),
+    ],
+    paths: [],
+    rawText,
+  });
+}
+
+function evidenceStatusLabel(status: string | undefined, offloaded: boolean): string {
+  if (status === "partial") {
+    return "\u90e8\u5206\u5b8c\u6210";
+  }
+  if (status === "cached") {
+    return "\u5df2\u7f13\u5b58";
+  }
+  if (status === "failed" || status === "error") {
+    return "\u5931\u8d25";
+  }
+  return offloaded ? "\u5df2\u4fdd\u5b58" : "\u5df2\u5199\u5165";
+}
+
+function evidenceStatusTone(status: string | undefined, offloaded: boolean): ToolDisplayTone {
+  if (status === "partial") {
+    return "warning";
+  }
+  if (status === "failed" || status === "error") {
+    return "danger";
+  }
+  return offloaded || status === "ok" || status === "cached" ? "success" : "neutral";
+}
+
 function parseTodosFromResult(toolName: string, parsed: unknown, text: string): ToolDisplayTodo[] {
   const record = asRecord(parsed);
   if (Array.isArray(record?.todos)) {
@@ -506,8 +612,61 @@ function resultStatusTone(record: Record<string, unknown>): ToolDisplayTone | un
   return undefined;
 }
 
+function isErrorToolResult(record: Record<string, unknown> | null, text: string): boolean {
+  const status = stringValue(record?.status)?.toLowerCase();
+  if (status && ["error", "failed", "failure", "timeout"].includes(status)) {
+    return true;
+  }
+
+  const exitCode = numberValue(record?.exit_code);
+  if (exitCode != null && exitCode !== 0) {
+    return true;
+  }
+
+  const stderr = stringValue(record?.stderr);
+  if (stderr?.trim()) {
+    return true;
+  }
+
+  return /(?:\berror\b|\bfailed\b|\bfailure\b|permission denied|not found|错误|失败|拒绝)/i.test(text);
+}
+
+function isReadOnlyToolName(toolName: string): boolean {
+  return new Set(["read_file", "read_directory", "list_directory", "ls", "glob", "grep"]).has(toolName);
+}
+
+function isReadOnlyShellCommand(command: string): boolean {
+  const normalized = command
+    .trim()
+    .replace(/^cmd(?:\.exe)?\s+\/c\s+/i, "")
+    .replace(/^powershell(?:\.exe)?\s+(?:-[a-z]+\s+)*(?:-command\s+)?/i, "")
+    .trim();
+  return readOnlyShellCommands.some((candidate) => {
+    if (candidate === "rg --files") {
+      return /^rg\s+--files(?:\s|$)/i.test(normalized);
+    }
+    return new RegExp(`^${escapeRegExp(candidate)}(?:\\s|$)`, "i").test(normalized);
+  });
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function looksLikeExecutionResult(record: Record<string, unknown> | null): boolean {
   return Boolean(record && ("exit_code" in record || "stdout" in record || "stderr" in record || "command" in record));
+}
+
+function isEvidenceToolName(toolName: string): boolean {
+  return toolName === "search_knowledge" || toolName === "extract_sources";
+}
+
+function hasArtifact(record: Record<string, unknown> | null): boolean {
+  return Boolean(record?.artifact && typeof record.artifact === "object");
+}
+
+function isLargeToolResultNotice(text: string): boolean {
+  return /Tool result too large/i.test(text) && /large_tool_results/i.test(text);
 }
 
 function scalarFields(record: Record<string, unknown> | null, limit = 6): ToolDisplayField[] {

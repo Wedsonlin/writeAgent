@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { shouldHideToolResult } from "../lib/toolDisplay";
 import { ToolCallCard } from "./ToolCallCard";
 import { ToolResultCard } from "./ToolResultCard";
 
@@ -59,7 +60,13 @@ const roleIcons: Record<string, { label: string; icon: React.ReactNode }> = {
 
 export function MessageBubble({ message }: Props) {
   const normalized = normalizeMessage(message);
-  if (!normalized.content && normalized.toolCalls.length === 0) {
+  const showToolResult =
+    Boolean(normalized.content) &&
+    normalized.role === "tool" &&
+    !shouldHideToolResult({ name: normalized.name, content: normalized.content, parsed: normalized.parsed });
+  const showMessageContent = Boolean(normalized.content) && normalized.role !== "tool";
+
+  if (!showToolResult && !showMessageContent && normalized.toolCalls.length === 0) {
     return null;
   }
 
@@ -71,10 +78,10 @@ export function MessageBubble({ message }: Props) {
         {roleInfo?.icon}
         {roleInfo?.label ?? normalized.role}
       </div>
-      {normalized.content && normalized.role === "tool" && (
+      {showToolResult && (
         <ToolResultCard content={normalized.content} name={normalized.name} parsed={normalized.parsed} />
       )}
-      {normalized.content && normalized.role !== "tool" && (
+      {showMessageContent && (
         <div className="message-content">
           {normalized.role === "ai" || normalized.role === "assistant" ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalized.content}</ReactMarkdown>

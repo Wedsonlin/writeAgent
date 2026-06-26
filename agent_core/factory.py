@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any, Callable
+from langchain.tools import ToolRuntime
 from langchain_core.tools import StructuredTool
+from pydantic import BaseModel
 
 from delegation.discovery import AgentDiscovery
 from delegation.registry import AgentRegistry
@@ -20,9 +22,14 @@ from workflows.loader import load_workflow
 
 from .config import RuntimeConfig
 from .context import AgentRuntimeContext
+from .run_context import current_runtime_context_value
 
 
 _CHECKPOINTER_DEFAULT = object()
+
+
+class NoInputToolInput(BaseModel):
+    """Empty schema for tools with no user-supplied arguments."""
 
 
 def create_write_agent(
@@ -51,10 +58,16 @@ def create_write_agent(
     )
     delegation_runtime = DelegationRuntime(registry or discovered_agents.registry, trace_store=trace_store)
 
-    tools = _build_tools(cfg, trace_store, delegation_runtime)
+    tools = _build_tools(cfg, trace_store, delegation_runtime, workflow)
     middleware = [
-        WorkflowGateMiddleware(workflow, cfg.manifest_path, trace_store=trace_store, skill_pack_root=cfg.skill_pack_root),
-        TraceMiddleware(trace_store),
+        WorkflowGateMiddleware(
+            workflow,
+            cfg.manifest_path,
+            trace_store=trace_store,
+            skill_pack_root=cfg.skill_pack_root,
+            runtime_config=cfg,
+        ),
+        TraceMiddleware(trace_store, runtime_config=cfg),
         GuardrailsMiddleware(cfg.allowed_roots, repo_root=cfg.repo_root),
     ]
     selected_model = model if model is not None else cfg.model.model
@@ -123,7 +136,12 @@ def _configure_general_purpose_subagent(model: Any, *, enabled: bool) -> None:
     )
 
 
-def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime: DelegationRuntime) -> list[Any]:
+def _build_tools(
+    cfg: RuntimeConfig,
+    trace_store: TraceStore,
+    delegation_runtime: DelegationRuntime,
+    workflow: Any,
+) -> list[Any]:
     from tools.ask_user import AskUserInput, ask_user
     from tools.execute_bash import ExecuteBashInput, execute_bash
     from tools.extract_sources import ExtractSourcesInput, aextract_sources, extract_sources
@@ -133,67 +151,120 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
     from tools.update_progress import UpdateProgressInput, update_progress
     from tools.delegate_to_agent import DelegateToAgentInput, delegate_to_agent
 
-    def execute_bash_tool(command: str, cwd: str | None = None, timeout_sec: int = 60, purpose: str | None = None) -> dict[str, Any]:
+    def execute_bash_tool(
+        command: str,
+        cwd: str | None = None,
+        timeout_sec: int = 60,
+        purpose: str | None = None,
+        runtime: ToolRuntime | None = None,
+    ) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
         return execute_bash(
             command,
             cwd=cwd,
             timeout_sec=timeout_sec,
             purpose=purpose,
-            repo_root=cfg.repo_root,
+            repo_root=project_cfg.repo_root,
         ).model_dump() # model_dump(): BaseModel -> dict
 
-    def update_artifact_manifest_tool(**kwargs: Any) -> dict[str, Any]:
-        return update_artifact_manifest(cfg.manifest_path, trace_store=trace_store, **kwargs)
+    def update_artifact_manifest_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
+        kwargs = _normalize_manifest_paths(project_cfg, kwargs)
+        return update_artifact_manifest(
+            project_cfg.manifest_path,
+            trace_store=_trace_store_for_project(project_cfg, trace_store),
+            **kwargs,
+        )
 
-    def update_progress_tool(**kwargs: Any) -> dict[str, Any]:
-        return update_progress(cfg.progress_path, trace_store=trace_store, **kwargs)
+    def update_progress_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
+        return update_progress(
+            project_cfg.progress_path,
+            trace_store=_trace_store_for_project(project_cfg, trace_store),
+            **kwargs,
+        )
 
-    def inspect_progress_tool() -> dict[str, Any]:
-        return inspect_progress(cfg.progress_path, cfg.manifest_path)
+    def inspect_progress_tool(runtime: ToolRuntime | None = None) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
+        return inspect_progress(
+            project_cfg.progress_path,
+            project_cfg.manifest_path,
+            project_id=project_cfg.project_id,
+            project_root=_repo_virtual_path(project_cfg, project_cfg.project_root),
+            artifact_root=_repo_virtual_path(project_cfg, project_cfg.artifact_root),
+            tmp_root=_repo_virtual_path(project_cfg, project_cfg.tmp_root),
+            evidence_root=_repo_virtual_path(project_cfg, project_cfg.evidence_root),
+            cache_root=_repo_virtual_path(project_cfg, project_cfg.cache_root),
+        )
 
     def delegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
         return delegate_to_agent(delegation_runtime, **kwargs)
 
-    def search_knowledge_tool(**kwargs: Any) -> dict[str, Any]:
+    def search_knowledge_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
         return search_knowledge(
-            artifact_root=cfg.artifact_root,
-            manifest_path=cfg.manifest_path,
+            artifact_root=project_cfg.project_root,
+            manifest_path=project_cfg.manifest_path,
             **kwargs,
         )
 
-    def extract_sources_tool(**kwargs: Any) -> dict[str, Any]:
+    def extract_sources_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
         return extract_sources(
-            artifact_root=cfg.artifact_root,
-            manifest_path=cfg.manifest_path,
+            artifact_root=project_cfg.project_root,
+            manifest_path=project_cfg.manifest_path,
             **kwargs,
         )
 
-    async def aexecute_bash_tool(command: str, cwd: str | None = None, timeout_sec: int = 60, purpose: str | None = None) -> dict[str, Any]:
-        return await asyncio.to_thread(execute_bash_tool, command, cwd=cwd, timeout_sec=timeout_sec, purpose=purpose)
+    async def aexecute_bash_tool(
+        command: str,
+        cwd: str | None = None,
+        timeout_sec: int = 60,
+        purpose: str | None = None,
+        runtime: ToolRuntime | None = None,
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            execute_bash_tool,
+            command,
+            cwd=cwd,
+            timeout_sec=timeout_sec,
+            purpose=purpose,
+            runtime=runtime,
+        )
 
-    async def aupdate_artifact_manifest_tool(**kwargs: Any) -> dict[str, Any]:
-        return await asyncio.to_thread(update_artifact_manifest_tool, **kwargs)
+    async def aupdate_artifact_manifest_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        return await asyncio.to_thread(update_artifact_manifest_tool, runtime=runtime, **kwargs)
 
-    async def aupdate_progress_tool(**kwargs: Any) -> dict[str, Any]:
-        return await asyncio.to_thread(update_progress_tool, **kwargs)
+    async def aupdate_progress_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        return await asyncio.to_thread(update_progress_tool, runtime=runtime, **kwargs)
 
-    async def ainspect_progress_tool() -> dict[str, Any]:
-        return await asyncio.to_thread(inspect_progress_tool)
+    async def ainspect_progress_tool(runtime: ToolRuntime | None = None) -> dict[str, Any]:
+        return await asyncio.to_thread(inspect_progress_tool, runtime=runtime)
 
     async def adelegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
         return await asyncio.to_thread(delegate_to_agent_tool, **kwargs)
 
-    async def asearch_knowledge_tool(**kwargs: Any) -> dict[str, Any]:
+    async def asearch_knowledge_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
         return await asearch_knowledge(
-            artifact_root=cfg.artifact_root,
-            manifest_path=cfg.manifest_path,
+            artifact_root=project_cfg.project_root,
+            manifest_path=project_cfg.manifest_path,
             **kwargs,
         )
 
-    async def aextract_sources_tool(**kwargs: Any) -> dict[str, Any]:
+    async def aextract_sources_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
+        project_cfg = _project_config_from_runtime(cfg, runtime)
+        _ensure_project_state(project_cfg, workflow)
         return await aextract_sources(
-            artifact_root=cfg.artifact_root,
-            manifest_path=cfg.manifest_path,
+            artifact_root=project_cfg.project_root,
+            manifest_path=project_cfg.manifest_path,
             **kwargs,
         )
 
@@ -230,6 +301,7 @@ def _build_tools(cfg: RuntimeConfig, trace_store: TraceStore, delegation_runtime
             description="Inspect current workflow stage, blocked reason, and known artifacts.",
             func=inspect_progress_tool,
             coroutine=ainspect_progress_tool,
+            args_schema=NoInputToolInput,
         ),
         StructuredTool.from_function(
             name="delegate_to_agent",
@@ -272,6 +344,69 @@ def _build_interrupt_on() -> dict[str, object]:
     }
 
 
+def _project_config_from_runtime(cfg: RuntimeConfig, runtime: Any | None) -> RuntimeConfig:
+    project_id = _runtime_context_value(runtime, "project_id")
+    if project_id is None:
+        project_id = current_runtime_context_value("project_id")
+    if isinstance(project_id, str) and project_id.strip():
+        return cfg.for_project(project_id)
+    return cfg
+
+
+def _runtime_context_value(runtime: Any | None, key: str) -> Any:
+    if runtime is None:
+        return None
+    context = getattr(runtime, "context", None)
+    if isinstance(context, dict):
+        return context.get(key)
+    return getattr(context, key, None)
+
+
+def _ensure_project_state(project_cfg: RuntimeConfig, workflow: Any) -> None:
+    project_cfg.ensure_dirs()
+    if not project_cfg.progress_path.exists():
+        ProgressLedger.create(workflow.id, workflow.stage_ids).save(project_cfg.progress_path)
+
+
+def _trace_store_for_project(project_cfg: RuntimeConfig, fallback: TraceStore) -> TraceStore:
+    if project_cfg.trace_path == fallback.path:
+        return fallback
+    return TraceStore(project_cfg.trace_path)
+
+
+def _repo_virtual_path(cfg: RuntimeConfig, path: Path) -> str:
+    try:
+        relative = path.resolve().relative_to(cfg.repo_root.resolve())
+    except ValueError:
+        return str(path)
+    return "/" + relative.as_posix()
+
+
+def _normalize_manifest_paths(cfg: RuntimeConfig, kwargs: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(kwargs)
+    if isinstance(normalized.get("path"), str):
+        normalized["path"] = _normalize_repo_path(cfg, normalized["path"])
+    metadata = normalized.get("metadata")
+    if isinstance(metadata, dict):
+        normalized["metadata"] = {
+            key: _normalize_repo_path(cfg, value) if key.endswith("_path") and isinstance(value, str) else value
+            for key, value in metadata.items()
+        }
+    return normalized
+
+
+def _normalize_repo_path(cfg: RuntimeConfig, raw_path: str) -> str:
+    if raw_path.startswith("/.writeagent/") or raw_path.startswith("/case/") or raw_path.startswith("/skill_packs/"):
+        return raw_path.lstrip("/")
+    path = Path(raw_path)
+    if path.is_absolute():
+        try:
+            return path.resolve().relative_to(cfg.repo_root.resolve()).as_posix()
+        except ValueError:
+            return raw_path
+    return raw_path.replace("\\", "/")
+
+
 def _build_filesystem_backend(cfg: RuntimeConfig) -> Any:
     from deepagents.backends import FilesystemBackend
 
@@ -285,10 +420,7 @@ def _build_filesystem_permissions() -> list[Any]:
         FilesystemPermission(operations=["read"], paths=["/.env", "/.env.*"], mode="deny"),
         FilesystemPermission(
             operations=["write"],
-            paths=[
-                "/.writeagent/projects/default/artifacts",
-                "/.writeagent/projects/default/artifacts/**",
-            ],
+            paths=["/.writeagent/projects", "/.writeagent/projects/**"],
             mode="allow",
         ),
         FilesystemPermission(operations=["write"], paths=["/**"], mode="deny"),

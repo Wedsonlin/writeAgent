@@ -12,7 +12,6 @@ export function ToolDisplayView({ display, rawLabel }: ToolDisplayViewProps) {
   const hasDetails =
     display.keyValues.length > 0 ||
     display.todos.length > 0 ||
-    display.paths.length > 0 ||
     Boolean(display.markdown);
 
   return (
@@ -40,14 +39,6 @@ export function ToolDisplayView({ display, rawLabel }: ToolDisplayViewProps) {
             </li>
           ))}
         </ol>
-      )}
-
-      {display.paths.length > 0 && (
-        <div className="tool-path-list" aria-label="相关路径">
-          {display.paths.map((path) => (
-            <code key={path}>{path}</code>
-          ))}
-        </div>
       )}
 
       {display.markdown && (

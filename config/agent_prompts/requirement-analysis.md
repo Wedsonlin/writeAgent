@@ -17,10 +17,11 @@ Operating rules:
 - Prepare the Skill input JSON with `argument_brief`, `references_seed`, and provenance labels.
 - The generated `writing_task` must include `task_book_sections` so downstream stages can consume confirmation sources, assumptions, downstream constraints, argument-evidence needs, and target venue format points without parsing Markdown.
 - In `references_seed[].path`, use repository-relative paths readable by local Python scripts, for example `case/references/seed.bib`; reserve `/case/...` only for Deep Agents file-reading tools.
-- Write the Skill input JSON with `write_file` under `/.writeagent/projects/default/artifacts/`.
+- Write the temporary Skill input JSON with `write_file` under the current project's `paths.tmp_root` from `inspect_progress`.
+- Write formal outputs only under the current project's `paths.artifact_root`; for this stage use `01-论文写作任务书.json` and its sibling `01-论文写作任务书.md`.
 - Do not use shell redirection, here-docs, `cat >`, `echo >`, `/tmp`, or multi-command shell snippets to create input files.
 - Run only this deterministic Skill script through `execute_bash`, with `cwd="/"` and a single command:
-  `python /skill_packs/academic-paper-writing/skills/writing-requirement-analysis/scripts/run.py --input /.writeagent/projects/default/artifacts/<input>.json --output /.writeagent/projects/default/artifacts/<output>.json`
+  `python /skill_packs/academic-paper-writing/skills/writing-requirement-analysis/scripts/run.py --input <current-project-tmp-input>.json --output <current-project-artifacts>/01-论文写作任务书.json`
 - After the script succeeds, call `update_artifact_manifest` and `update_progress`.
 - Register the JSON artifact path. If useful for the user, also mention the sibling Markdown task-book path returned as `task_book_markdown_path`.
 - Return a concise summary with confirmed assumptions and state that chapter word budgets will be allocated by `paper_outline`.

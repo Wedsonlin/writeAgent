@@ -12,6 +12,7 @@ from typing import Any
 class ContractError(Exception):
     message: str
     fields: list[str]
+    details: dict[str, Any] | None = None
 
     def __str__(self) -> str:
         return self.message
@@ -68,7 +69,10 @@ def main() -> int:
         draft["draft_markdown_path"] = str(markdown_path)
         draft["quality_checks"]["markdown_sidecar_written"] = True
     except ContractError as exc:
-        _write_json(output_path, {"artifact_type": "draft", "error": {"message": str(exc), "fields": exc.fields}})
+        error: dict[str, Any] = {"message": str(exc), "fields": exc.fields}
+        if exc.details:
+            error["details"] = exc.details
+        _write_json(output_path, {"artifact_type": "draft", "error": error})
         return 1
 
     _write_text(markdown_path, draft["draft_markdown"])
@@ -189,6 +193,7 @@ def _validate_draft(
     reference_index = _reference_index(draft["references"])
     outline_ids = _outline_ids(outline)
     support_lookup = _support_lookup(literature_report)
+    citation_mismatches: list[dict[str, Any]] = []
 
     for index, section in enumerate(draft["sections"]):
         field = f"draft.sections[{index}]"
@@ -208,7 +213,14 @@ def _validate_draft(
             missing.append(f"{field}.support_status")
         if _uses_weak_support_as_strong(section, support_lookup):
             missing.append(f"{field}.support_status")
-        _validate_section_citations(section, index, reference_index, len(draft["references"]), missing)
+        _validate_section_citations(
+            section,
+            index,
+            reference_index,
+            len(draft["references"]),
+            missing,
+            citation_mismatches,
+        )
         _validate_section_depth(section, index, missing)
 
     if _requires_empirical_data(writing_task, draft, raw_input):
@@ -223,7 +235,12 @@ def _validate_draft(
         missing.append("draft.innovation_trace")
 
     if missing:
-        raise ContractError("draft content is incomplete, unsupported, or inconsistent with the outline/literature contract", sorted(set(missing)))
+        details = {"citation_mismatches": citation_mismatches} if citation_mismatches else None
+        raise ContractError(
+            "draft content is incomplete, unsupported, or inconsistent with the outline/literature contract",
+            sorted(set(missing)),
+            details,
+        )
 
 
 def _validate_section_citations(
@@ -232,6 +249,7 @@ def _validate_section_citations(
     reference_index: dict[str, int],
     reference_count: int,
     missing: list[str],
+    citation_mismatches: list[dict[str, Any]],
 ) -> None:
     field = f"draft.sections[{section_index}]"
     markers = _citation_marker_numbers(section["content_markdown"])
@@ -245,6 +263,15 @@ def _validate_section_citations(
             continue
         if expected_marker not in markers:
             missing.append(f"{field}.content_markdown.citation_marker")
+            citation_mismatches.append(
+                {
+                    "section_index": section_index,
+                    "section_title": section["title"],
+                    "citation_id": citation_id,
+                    "expected_marker": expected_marker,
+                    "body_markers": sorted(markers),
+                }
+            )
 
 
 def _validate_section_depth(section: dict[str, Any], section_index: int, missing: list[str]) -> None:

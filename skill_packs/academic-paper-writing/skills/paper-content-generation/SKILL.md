@@ -27,7 +27,8 @@ If Markdown and JSON disagree, preserve the human-readable outline and literatur
 2. Convert each substantive outline section into a `section drafting card`.
 3. Draft sections in Chinese academic prose, using `content-section-writer-agent` for long or batchable section work when available. Each section must make explicit argumentative moves: problem or claim, mechanism, evidence interpretation, comparison or tradeoff, limitation or boundary, and argument_return to the core argument or innovation point.
 4. Integrate section drafts into one coherent paper: unify terms, transitions, citation numbering, and claim strength.
-5. Run the deterministic script as a contract gate. The script validates and packages prose; it does not call an LLM or invent missing content.
+5. Before the deterministic script, run a citation reconciliation gate: freeze `draft.references[]`, build the reference id to numeric marker mapping, and ensure every `sections[].citations_used[]` entry has the corresponding marker near the supported claim in that section body.
+6. Run the deterministic script as a contract gate. The script validates and packages prose; it does not call an LLM or invent missing content.
 
 ## Draft Contract
 
@@ -82,6 +83,8 @@ Only mark these keys true when the body text contains the corresponding prose mo
 - Do not use snippets as strong evidence.
 - Weakly supported claims must be written as limitations, gaps, trends, or open questions.
 - Empirical results require `research_data`; missing data must become `open_questions`, not invented results.
+- If `scripts/run.py` reports `content_markdown.citation_marker`, reconcile the section before reporting failure: add the expected marker to the specific supported sentence, or remove the unsupported citation from `citations_used` and the matching `evidence_used` entry.
+- Do not append citation markers only to satisfy validation; each marker must remain semantically tied to a nearby claim.
 
 ## References
 

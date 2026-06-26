@@ -17,6 +17,13 @@ Writing workflow:
 - For long drafts, call `content-section-writer-agent` through the `task` tool with small batches of section drafting card objects. The section writer returns local `section_drafts`; it must not produce the final `draft` artifact.
 - Integrate the returned sections yourself: unify terminology, remove duplicated boilerplate, check transitions, and make the final prose coherent across chapters.
 
+Draft preflight and recovery:
+- Do not run `paper-content-generation/scripts/run.py` when `draft` is absent from the script input JSON.
+- If the current content_generation input contains only `outline`, `literature_report`, Markdown paths, artifact references, or JSON anchors, first author the complete `draft` object yourself from those materials. Do not ask the user to provide an external draft.
+- If `content-section-writer-agent` or the `task` tool is unavailable, fails, or returns incomplete `section_drafts`, continue inside this agent: draft each section yourself, then integrate the sections into one coherent `draft`.
+- If the deterministic script returns `content-generation input must include a LLM-authored draft object`, treat `content-generation input must include a LLM-authored draft object` as an early script execution error. Recover by adding the complete LLM-authored `draft` object to the input and rerun the deterministic Skill script; do not mark the workflow blocked for this reason.
+- The final script input must contain `writing_task`, `outline`, `literature_report`, and `draft`. The `draft.sections[]` entries must already include substantive prose, synchronized citations, evidence traces, section_depth_checks, transitions, support status, linked arguments, and linked innovation points before the script runs.
+
 Evidence and citation rules:
 - Cite only sources that appear in `literature_report` or in a new evidence artifact created after `search_knowledge` and `extract_sources`.
 - Before adding factual claims, recent developments, performance comparisons, research-status judgments, source-specific statements, or data claims not supported by `literature_report`, call `search_knowledge` and ground the claim in `search_evidence`; otherwise weaken or remove the claim.
@@ -25,7 +32,11 @@ Evidence and citation rules:
 - Populate `draft.references[]` from the seed bibliography and literature_report references. Do not invent DOI, authors, venues, page ranges, metrics, or URLs.
 - Before drafting sections, freeze `draft.references[]` as the complete numbered bibliography for this draft. Every citation marker in section prose must reference that fixed list only.
 - Citation markers may be single, comma-separated, or ranged forms such as `[1]`, `[1,2]`, and `[3-5]`, but every expanded number must satisfy `1 <= n <= len(draft.references)`. Never cite `[24]` if the draft has only 20 references.
+- Before running the deterministic script, perform a citation reconciliation gate: build a `reference id -> [n]` map from `draft.references[]`, expand all section body markers, and verify each `section.citations_used[]` entry has its expected marker in that section body.
 - `section.citations_used` may use citation keys or numeric strings, but it must match the section body: if the body cites `[1-3]`, include `1`, `2`, and `3` or the corresponding three citation keys.
+- When a `citations_used` entry has no matching body marker, either add the expected marker to the specific sentence whose claim is supported by that source, or remove that citation from `citations_used` and its matching `evidence_used` entry if the source does not actually support the section prose.
+- Do not append citation markers only to satisfy validation; every marker must be close to the claim it supports.
+- If the deterministic script returns `content_markdown.citation_marker`, treat `content_markdown.citation_marker` as a recoverable input error. Use any `error.details.citation_mismatches[]` diagnostics to reconcile markers, then rerun the deterministic Skill script; do not mark the workflow blocked for this reason.
 - Before running the deterministic script, scan all section bodies and fix any citation number that is missing from `draft.references[]`, any `citations_used` entry that has no matching body marker, and any body marker that exceeds the final bibliography length.
 
 Draft requirements:

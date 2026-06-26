@@ -47,8 +47,8 @@ def workflow_meta() -> dict[str, Any]:
 
 
 @app.get("/api/workflow/progress")
-def workflow_progress() -> dict[str, Any]:
-    cfg = _config()
+def workflow_progress(project_id: str | None = None) -> dict[str, Any]:
+    cfg = _project_config(project_id)
     cfg.ensure_dirs()
     workflow = load_workflow(cfg.skill_pack_root / "workflow.yaml")
     if not cfg.progress_path.exists():
@@ -58,6 +58,7 @@ def workflow_progress() -> dict[str, Any]:
     manifest = ArtifactManifest.load(cfg.manifest_path)
     return {
         "workflow_id": ledger.workflow_id,
+        "project_id": cfg.project_id,
         "current_stage": ledger.current_stage,
         "blocked_reason": ledger.blocked_reason,
         "updated_at": ledger.updated_at,
@@ -79,11 +80,11 @@ def case_original_requirement() -> dict[str, str]:
 
 
 @app.get("/api/artifacts/{artifact_id}/files/{kind}")
-def artifact_file(artifact_id: str, kind: str) -> FileResponse:
+def artifact_file(artifact_id: str, kind: str, project_id: str | None = None) -> FileResponse:
     if kind not in {"json", "markdown", "docx", "pdf"} or _looks_unsafe_segment(artifact_id):
         raise HTTPException(status_code=404, detail="Artifact file not found")
 
-    cfg = _config()
+    cfg = _project_config(project_id)
     manifest = ArtifactManifest.load(cfg.manifest_path)
     meta = manifest.get(artifact_id)
     if meta is None:
@@ -97,6 +98,13 @@ def artifact_file(artifact_id: str, kind: str) -> FileResponse:
 
 def _config() -> RuntimeConfig:
     return RuntimeConfig()
+
+
+def _project_config(project_id: str | None = None) -> RuntimeConfig:
+    cfg = _config()
+    if isinstance(project_id, str) and project_id.strip():
+        return cfg.for_project(project_id)
+    return cfg
 
 
 def _artifact_file_path(cfg: RuntimeConfig, meta: ArtifactMeta, kind: str) -> Path | None:
@@ -145,7 +153,10 @@ def _path_from_payload_or_metadata(body: dict[str, Any], metadata: dict[str, Any
 def _resolve_known_path(cfg: RuntimeConfig, raw_path: str | Path | None) -> Path | None:
     if raw_path is None:
         return None
-    candidate = Path(raw_path)
+    raw_text = str(raw_path)
+    if raw_text.startswith("/.writeagent/") or raw_text.startswith("/case/") or raw_text.startswith("/skill_packs/"):
+        raw_text = raw_text.lstrip("/")
+    candidate = Path(raw_text)
     candidates = [candidate] if candidate.is_absolute() else [
         cfg.repo_root / candidate,
         cfg.project_root / candidate,

@@ -70,9 +70,6 @@ def extract_polished_markdown(data: dict[str, Any]) -> str:
     polished = str(data.get("polished_markdown") or "").strip()
     if polished:
         return polished + "\n"
-    formatted_markdown = extract_formatted_markdown(data)
-    if formatted_markdown and data.get("accept_formatted_without_changes") is True:
-        return formatted_markdown + "\n"
     raise ContractError(
         "polish input must include LLM-polished markdown in polished_markdown",
         ["polished_markdown"],

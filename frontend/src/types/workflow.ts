@@ -38,6 +38,7 @@ export interface ArtifactMeta {
 
 export interface WorkflowProgressPayload {
   workflow_id: string;
+  project_id?: string;
   current_stage?: string | null;
   blocked_reason?: string | null;
   updated_at: string;

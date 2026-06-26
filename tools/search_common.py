@@ -74,7 +74,7 @@ def write_evidence_artifact(
 ) -> dict[str, Any]:
     root = Path(artifact_root)
     artifact_id = f"search-evidence-{uuid4().hex[:12]}"
-    relative_path = Path("search_evidence") / f"{artifact_id}.json"
+    relative_path = Path("evidence") / f"{artifact_id}.json"
     artifact_path = root / relative_path
     payload = {"artifact_id": artifact_id, **evidence}
 
@@ -98,7 +98,7 @@ def write_evidence_artifact(
 
 
 def _cache_path(artifact_root: str | Path, key: str) -> Path:
-    return Path(artifact_root) / "_search_cache" / f"{key}.json"
+    return Path(artifact_root) / "cache" / "search" / f"{key}.json"
 
 
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:

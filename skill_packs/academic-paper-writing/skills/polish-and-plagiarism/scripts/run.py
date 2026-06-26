@@ -35,24 +35,6 @@ def main() -> int:
             context["constraints"],
         )
         issues.extend(context["protected_claim_issues"])
-        if data.get("_used_formatted_fallback"):
-            issues.append(
-                {
-                    "code": "formatted_markdown_fallback",
-                    "severity": "warning",
-                    "field": "polished_markdown",
-                    "message": "polished_markdown was omitted; preserved formatted_draft.markdown for final export",
-                }
-            )
-        if data.get("_auto_polish_log"):
-            issues.append(
-                {
-                    "code": "auto_polish_log",
-                    "severity": "warning",
-                    "field": "polish_log",
-                    "message": "polish_log was omitted; generated a conservative log entry for the supplied polished_markdown",
-                }
-            )
         template_profile = _template_profile_from_data(data)
         template_source_path = _template_source_path_from_data(data)
         export = export_markdown_document(
@@ -124,42 +106,6 @@ def _hydrate_formatted_draft(data: dict[str, Any], input_path: Path) -> dict[str
             data["formatted_draft"] = payload.get("formatted_draft") or payload
             break
 
-    if data.get("polished_markdown"):
-        if not data.get("polish_log") and isinstance(data.get("formatted_draft_path"), str):
-            data["polish_log"] = [
-                {
-                    "section": "全文",
-                    "change_type": "语言润色记录补全",
-                    "reason": "输入包含 polished_markdown 但缺少 polish_log；脚本补充保守日志以记录已提供终稿文本并继续导出校验。",
-                }
-            ]
-            data["_auto_polish_log"] = True
-        data.setdefault("plagiarism_optimization", [])
-        return data
-
-    formatted_markdown = _formatted_body(data).get("markdown")
-    if isinstance(formatted_markdown, str) and formatted_markdown.strip():
-        data["accept_formatted_without_changes"] = True
-        data["_used_formatted_fallback"] = True
-        data.setdefault(
-            "polish_log",
-            [
-                {
-                    "section": "全文",
-                    "change_type": "格式保持型终稿导出",
-                    "reason": "未收到 LLM 润色后的 polished_markdown，保留格式化稿正文并执行最终 DOCX/PDF 导出与规范校验。",
-                }
-            ],
-        )
-        data.setdefault(
-            "plagiarism_optimization",
-            [
-                {
-                    "section": "全文",
-                    "suggestion": "未接入商业查重报告；建议人工复核重复表达较高的定义性段落和系统列表段落。",
-                }
-            ],
-        )
     return data
 
 

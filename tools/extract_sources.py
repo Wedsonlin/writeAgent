@@ -37,7 +37,7 @@ def extract_sources(
     reason: str | None = None,
     force_refresh: bool = False,
     *,
-    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default" / "artifacts",
+    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default",
     manifest_path: str | Path | None = None,
     client: TavilyClient | None = None,
 ) -> dict[str, Any]:
@@ -62,7 +62,7 @@ async def aextract_sources(
     reason: str | None = None,
     force_refresh: bool = False,
     *,
-    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default" / "artifacts",
+    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default",
     manifest_path: str | Path | None = None,
     client: TavilyClient | None = None,
 ) -> dict[str, Any]:
@@ -72,12 +72,13 @@ async def aextract_sources(
 
     cleaned_urls = _clean_urls(urls)
     root = Path(artifact_root)
-    manifest = Path(manifest_path) if manifest_path is not None else root / "manifest.json"
+    manifest = Path(manifest_path) if manifest_path is not None else root / "artifacts" / "manifest.json"
     request_payload = {"urls": cleaned_urls, "reason": reason}
     cache_key = stable_cache_key("extract", request_payload)
-    cached = None if force_refresh else read_cache(root, cache_key)
+    cached = None if force_refresh else await asyncio.to_thread(read_cache, root, cache_key)
     if cached is not None:
-        return _persist_extract_result(
+        return await asyncio.to_thread(
+            _persist_extract_result,
             cached,
             status="cached",
             artifact_root=root,
@@ -134,9 +135,10 @@ async def aextract_sources(
             "concurrency": len(cleaned_urls),
         },
     }
-    write_cache(root, cache_key, payload)
+    await asyncio.to_thread(write_cache, root, cache_key, payload)
     status = "partial" if failed_results else "ok"
-    return _persist_extract_result(
+    return await asyncio.to_thread(
+        _persist_extract_result,
         payload,
         status=status,
         artifact_root=root,
@@ -169,12 +171,40 @@ def _persist_extract_result(
         depends_on=[source_artifact_id] if source_artifact_id else [],
         metadata={"provider": "tavily", "evidence_kind": "extract", "cache_hit": cache_hit},
     )
+    return _compact_extract_result(evidence, artifact, status=status)
+
+
+def _compact_extract_result(
+    evidence: dict[str, Any],
+    artifact: dict[str, Any],
+    *,
+    status: str,
+) -> dict[str, Any]:
+    results = _dict_list(evidence.get("results"))
+    failed_results = _dict_list(evidence.get("failed_results"))
+    urls = [str(url) for url in evidence.get("urls", []) if str(url).strip()]
     return {
         "status": status,
         "artifact": artifact,
-        "results": evidence.get("results", []),
-        "failed_results": evidence.get("failed_results", []),
+        "result_count": len(results),
+        "failed_count": len(failed_results),
+        "urls": urls,
+        "preview_results": [_compact_extract_preview(item) for item in results[:3]],
     }
+
+
+def _compact_extract_preview(item: dict[str, Any]) -> dict[str, Any]:
+    content = str(item.get("content") or item.get("raw_content") or "")
+    preview = {
+        "url": item.get("url"),
+        "domain": item.get("domain"),
+        "content_chars": len(content),
+    }
+    return {key: value for key, value in preview.items() if value not in (None, "", [])}
+
+
+def _dict_list(value: Any) -> list[dict[str, Any]]:
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
 
 def _build_extract_payload(url: str, reason: str | None) -> dict[str, Any]:

@@ -511,6 +511,10 @@ input {
 }
 
 /* ── Chat panel ──────────────────────────────────────────────────── */
+.chat-panel-shell {
+  position: relative;
+}
+
 .chat-panel {
   min-height: 360px;
   max-height: 60vh;
@@ -521,6 +525,31 @@ input {
   border-radius: var(--radius);
   box-shadow: 0 2px 12px var(--shadow);
   scroll-behavior: smooth;
+}
+
+.jump-to-latest {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  display: block;
+  width: max-content;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border: 1px solid rgba(58, 90, 140, 0.2);
+  border-radius: var(--radius-pill);
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  box-shadow: 0 2px 8px rgba(58, 90, 140, 0.22);
+  cursor: pointer;
+  z-index: 1;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+
+.jump-to-latest:hover {
+  background: #2e4a74;
+  box-shadow: 0 4px 12px rgba(58, 90, 140, 0.28);
 }
 
 .empty-state {
@@ -1182,6 +1211,69 @@ input {
   font-size: 12px;
   line-height: 1.6;
   max-height: 200px;
+}
+
+.interrupt-question-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(184, 134, 11, 0.22);
+  border-radius: var(--radius-sm);
+  background: var(--accent-amber-light);
+}
+
+.interrupt-question-label {
+  color: var(--accent-amber);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.interrupt-question-text {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.interrupt-question-section {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.interrupt-question-section > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.interrupt-question-section p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.interrupt-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.interrupt-chip-list li {
+  padding: 3px 9px;
+  border: 1px solid rgba(184, 134, 11, 0.22);
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .interrupt-card textarea {

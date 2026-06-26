@@ -8,6 +8,7 @@ interface Props {
 export function InterruptCard({ interrupt, onResume }: Props) {
   const request = useMemo(() => firstActionRequest(interrupt), [interrupt]);
   const resumeTarget = useMemo(() => interruptTarget(interrupt), [interrupt]);
+  const askUserPrompt = useMemo(() => askUserPromptFrom(request), [request]);
   const [response, setResponse] = useState("");
   const [editedCommand, setEditedCommand] = useState(() => commandFrom(request));
   const toolName = request?.name ?? "interrupt";
@@ -27,6 +28,29 @@ export function InterruptCard({ interrupt, onResume }: Props) {
             <p className="interrupt-header">{toolName === "ask_user" ? "Agent 需要您补充信息后才能继续。" : "请审核即将执行的操作。"}</p>
           </div>
         </div>
+
+        {toolName === "ask_user" && askUserPrompt && (
+          <div className="interrupt-question-panel" aria-label="需要您回答的问题">
+            <div className="interrupt-question-label">请回答</div>
+            <p className="interrupt-question-text">{askUserPrompt.question}</p>
+            {askUserPrompt.missingFields.length > 0 && (
+              <div className="interrupt-question-section">
+                <span>待确认信息</span>
+                <ul className="interrupt-chip-list">
+                  {askUserPrompt.missingFields.map((field) => (
+                    <li key={field}>{field}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {askUserPrompt.currentSummary && (
+              <div className="interrupt-question-section">
+                <span>当前已知信息</span>
+                <p>{askUserPrompt.currentSummary}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <details className="tool-card">
           <summary>
@@ -105,6 +129,12 @@ interface ActionRequest {
   args: Record<string, unknown>;
 }
 
+interface AskUserPrompt {
+  question: string;
+  missingFields: string[];
+  currentSummary?: string;
+}
+
 export interface ResumeTarget {
   interruptId?: string;
   namespace?: string[];
@@ -149,6 +179,28 @@ function interruptTarget(interrupt: unknown): ResumeTarget | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function stringListValue(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function askUserPromptFrom(request: ActionRequest | null): AskUserPrompt | null {
+  if (!request || request.name !== "ask_user") {
+    return null;
+  }
+  const question = stringValue(request.args.question)?.trim();
+  if (!question) {
+    return null;
+  }
+  return {
+    question,
+    missingFields: stringListValue(request.args.missing_fields),
+    currentSummary: stringValue(request.args.current_summary)?.trim(),
+  };
 }
 
 function commandFrom(request: ActionRequest | null): string {

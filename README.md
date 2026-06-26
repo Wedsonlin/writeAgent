@@ -23,7 +23,15 @@ Install Python dependencies in the `writeagent` environment:
 conda run -n writeagent python -m pip install -r requirements-orchestrator.txt
 ```
 
-Create `.env` from `.env.example` and fill the model provider key, for example `OPENAI_API_KEY`.
+Create `.env` from `.env.example` and fill the writeAgent model settings:
+
+```env
+WRITEAGENT_LLM_API_KEY=sk-your-deepseek-key
+WRITEAGENT_LLM_BASE_URL=https://api.deepseek.com
+WRITEAGENT_MODEL=openai:deepseek-v4-flash
+```
+
+The `openai:` model prefix selects the OpenAI-compatible LangChain adapter; it does not mean the request must go to OpenAI. For DeepSeek, use `deepseek-v4-flash` by default, or `deepseek-v4-pro` when higher quality matters more than latency or cost. Keep real API keys in `.env` only and do not commit them.
 
 Start the LangGraph development server from the repository root:
 

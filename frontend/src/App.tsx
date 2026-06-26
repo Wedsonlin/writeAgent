@@ -6,28 +6,45 @@ import { InterruptCard, type ResumeTarget } from "./components/InterruptCard";
 import { WorkflowProgress } from "./components/WorkflowProgress";
 import { type ToolResult, useToolResults } from "./hooks/useToolResults";
 import { useWorkflowProgress } from "./hooks/useWorkflowProgress";
+import {
+  artifactRootForProject,
+  createProjectSession,
+  ensureProjectSession,
+  normalizeThreadId,
+  projectNameForThread,
+  projectRootForProject,
+  saveProjectSession,
+  type ProjectSession,
+} from "./lib/projectSession";
 import type { WorkflowMeta, WorkflowProgressPayload } from "./types/workflow";
 import "./styles.css";
-
-const threadStorageKey = "writeagent_thread_id";
 
 export default function App() {
   const [input, setInput] = useState("");
   const [caseLoadError, setCaseLoadError] = useState<string | null>(null);
   const [isLoadingCase, setIsLoadingCase] = useState(false);
-  const [threadId, setThreadId] = useState<string | null>(
-    () => sessionStorage.getItem(threadStorageKey),
-  );
+  const [projectSession, setProjectSession] = useState<ProjectSession>(() => ensureProjectSession());
   const stream = useStream({
     apiUrl: agentUrl,
     assistantId: "writeagent",
     fetchStateHistory: true,
     reconnectOnMount: true,
     onThreadId: (id: string) => {
-      sessionStorage.setItem(threadStorageKey, id);
-      setThreadId(id);
+      const normalizedThreadId = normalizeThreadId(id);
+      if (!normalizedThreadId) {
+        return;
+      }
+      setProjectSession((current) => {
+        if (current.threadId === normalizedThreadId) {
+          return current;
+        }
+        const timestamp = current.projectName.split("_")[0] || current.projectName;
+        const next = { ...current, threadId: normalizedThreadId, projectName: projectNameForThread(timestamp, normalizedThreadId) };
+        saveProjectSession(next);
+        return next;
+      });
     },
-    threadId,
+    threadId: normalizeThreadId(projectSession.threadId) ?? undefined,
   } as never);
   const messages = stream.messages ?? [];
   const subagents = useMemo(
@@ -37,12 +54,12 @@ export default function App() {
   const streamInterrupts = (stream as { interrupts?: unknown[] }).interrupts ?? [];
   const activeInterrupt = stream.interrupt ?? streamInterrupts[0];
   const isRunning = Boolean(stream.isLoading);
-  const workflow = useWorkflowProgress(isRunning);
+  const workflow = useWorkflowProgress(isRunning, projectSession.projectName);
   const toolResults = useToolResults(messages);
   const streamError = stringifyError(stream.error);
   const displayedProgress = useMemo(
-    () => deriveProgressFromTools(workflow.meta, workflow.progress, toolResults),
-    [workflow.meta, workflow.progress, toolResults],
+    () => deriveProgressFromTools(workflow.meta, workflow.progress, toolResults, projectSession.projectName),
+    [workflow.meta, workflow.progress, toolResults, projectSession.projectName],
   );
 
   function handleSubmit(event: FormEvent) {
@@ -55,7 +72,7 @@ export default function App() {
     void stream.submit(
       { messages: [{ role: "human", content: text }] },
       {
-        config: { configurable: runtimeContext() },
+        config: { configurable: runtimeContext(projectSession) },
         metadata: { source: "frontend" },
         onError: (error: unknown) => console.error("writeAgent stream error", error),
       } as never,
@@ -63,8 +80,9 @@ export default function App() {
   }
 
   function handleNewSession() {
-    sessionStorage.removeItem(threadStorageKey);
-    setThreadId(null);
+    const next = createProjectSession();
+    saveProjectSession(next);
+    setProjectSession(next);
     window.location.reload();
   }
 
@@ -114,7 +132,12 @@ export default function App() {
         </div>
       </header>
 
-      <WorkflowProgress meta={workflow.meta} progress={displayedProgress} error={workflow.error ?? streamError} />
+      <WorkflowProgress
+        meta={workflow.meta}
+        progress={displayedProgress}
+        error={workflow.error ?? streamError}
+        projectId={projectSession.projectName}
+      />
 
       <section className="status-strip">
         <span className="status-item">
@@ -145,7 +168,7 @@ export default function App() {
           interrupt={activeInterrupt}
           onResume={(resume, target) =>
             void stream
-              .respond(resume, respondOptions(target) as never)
+              .respond(resume, respondOptions(projectSession, target) as never)
               .catch((error: unknown) => console.error("writeAgent resume error", error))
           }
         />
@@ -187,22 +210,27 @@ export default function App() {
   );
 }
 
-function runtimeContext() {
+function runtimeContext(projectSession: ProjectSession) {
+  const projectRoot = projectRootForProject(projectSession.projectName);
   return {
     user_id: "frontend-user",
     workspace_id: "local",
-    project_id: "default",
+    project_id: projectSession.projectName,
     skill_pack_id: "academic-paper-writing",
-    artifact_root: ".writeagent/projects/default/artifacts",
+    project_root: projectRoot,
+    artifact_root: artifactRootForProject(projectSession.projectName),
+    tmp_root: `${projectRoot}/tmp`,
+    evidence_root: `${projectRoot}/evidence`,
+    cache_root: `${projectRoot}/cache`,
     locale: "zh-CN",
     citation_style: "GB/T 7714",
   };
 }
 
-function respondOptions(target?: ResumeTarget) {
+function respondOptions(projectSession: ProjectSession, target?: ResumeTarget) {
   return {
     ...target,
-    config: { configurable: runtimeContext() },
+    config: { configurable: runtimeContext(projectSession) },
     metadata: { source: "frontend" },
   };
 }
@@ -221,6 +249,7 @@ function deriveProgressFromTools(
   meta: WorkflowMeta | null,
   base: WorkflowProgressPayload | null,
   toolResults: ToolResult[],
+  expectedProjectId?: string | null,
 ): WorkflowProgressPayload | null {
   let current = base;
   for (const result of toolResults) {
@@ -228,8 +257,11 @@ function deriveProgressFromTools(
       continue;
     }
     const parsed = result.parsed as Record<string, unknown>;
+    if (!isProgressForCurrentProject(parsed, expectedProjectId)) {
+      continue;
+    }
     if (Array.isArray(parsed.completed_stages) || Array.isArray(parsed.pending_stages)) {
-      current = fromInspectProgress(meta, current, parsed);
+      current = fromInspectProgress(meta, current, parsed, expectedProjectId);
     } else if (parsed.stage && typeof parsed.stage === "object") {
       current = fromUpdateProgress(current, parsed);
     }
@@ -241,6 +273,7 @@ function fromInspectProgress(
   meta: WorkflowMeta | null,
   base: WorkflowProgressPayload | null,
   parsed: Record<string, unknown>,
+  expectedProjectId?: string | null,
 ): WorkflowProgressPayload | null {
   if (!meta) {
     return base;
@@ -250,6 +283,7 @@ function fromInspectProgress(
   const currentStage = typeof parsed.current_stage === "string" ? parsed.current_stage : base?.current_stage ?? null;
   return {
     workflow_id: base?.workflow_id ?? meta.workflow_id,
+    project_id: (typeof parsed.project_id === "string" ? parsed.project_id : null) ?? base?.project_id ?? expectedProjectId ?? undefined,
     current_stage: currentStage,
     blocked_reason: (parsed.blocked_reason as string | null | undefined) ?? base?.blocked_reason ?? null,
     updated_at: base?.updated_at ?? new Date().toISOString(),
@@ -269,6 +303,14 @@ function fromInspectProgress(
       updated_at: base?.updated_at ?? new Date().toISOString(),
     })),
   };
+}
+
+function isProgressForCurrentProject(parsed: Record<string, unknown>, expectedProjectId?: string | null): boolean {
+  if (!expectedProjectId) {
+    return true;
+  }
+  const projectId = parsed.project_id;
+  return typeof projectId !== "string" || projectId === expectedProjectId;
 }
 
 function fromUpdateProgress(base: WorkflowProgressPayload | null, parsed: Record<string, unknown>): WorkflowProgressPayload | null {

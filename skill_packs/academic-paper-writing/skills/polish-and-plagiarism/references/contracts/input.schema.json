@@ -157,11 +157,6 @@
         },
         "additionalProperties": true
       }
-    },
-    "accept_formatted_without_changes": {
-      "type": "boolean",
-      "default": false,
-      "description": "Test/boundary flag: allow falling back to formatted_draft.markdown when polished_markdown is empty"
     }
   },
   "additionalProperties": true

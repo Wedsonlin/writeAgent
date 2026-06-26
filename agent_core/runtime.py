@@ -49,13 +49,17 @@ def main() -> None:
     parser.add_argument("--workspace-id", default="local")
     parser.add_argument("--user-id", default="local-user")
     args = parser.parse_args()
-    cfg = RuntimeConfig()
+    cfg = RuntimeConfig().for_project(args.project_id)
     ctx = AgentRuntimeContext(
         user_id=args.user_id,
         workspace_id=args.workspace_id,
-        project_id=args.project_id,
+        project_id=cfg.project_id,
         skill_pack_id=cfg.skill_pack_id,
+        project_root=str(cfg.project_root),
         artifact_root=str(cfg.artifact_root),
+        tmp_root=str(cfg.tmp_root),
+        evidence_root=str(cfg.evidence_root),
+        cache_root=str(cfg.cache_root),
     )
     result = WriteAgentRuntime(cfg).invoke(args.message, ctx)
     print(result)

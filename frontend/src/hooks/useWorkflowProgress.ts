@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchWorkflowMeta, fetchWorkflowProgress } from "../api/workflow";
 import type { WorkflowMeta, WorkflowProgressPayload } from "../types/workflow";
 
-export function useWorkflowProgress(isLoading: boolean) {
+export function useWorkflowProgress(isLoading: boolean, projectId?: string | null) {
   const [meta, setMeta] = useState<WorkflowMeta | null>(null);
   const [progress, setProgress] = useState<WorkflowProgressPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +11,7 @@ export function useWorkflowProgress(isLoading: boolean) {
     try {
       const [nextMeta, nextProgress] = await Promise.all([
         fetchWorkflowMeta(),
-        fetchWorkflowProgress(),
+        fetchWorkflowProgress(projectId),
       ]);
       setMeta(nextMeta);
       setProgress(nextProgress);
@@ -19,7 +19,7 @@ export function useWorkflowProgress(isLoading: boolean) {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     void refresh();

@@ -49,7 +49,7 @@ def search_knowledge(
     exclude_domains: list[str] | None = None,
     force_refresh: bool = False,
     *,
-    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default" / "artifacts",
+    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default",
     manifest_path: str | Path | None = None,
     client: TavilyClient | None = None,
 ) -> dict[str, Any]:
@@ -82,7 +82,7 @@ async def asearch_knowledge(
     exclude_domains: list[str] | None = None,
     force_refresh: bool = False,
     *,
-    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default" / "artifacts",
+    artifact_root: str | Path = REPO_ROOT / ".writeagent" / "projects" / "default",
     manifest_path: str | Path | None = None,
     client: TavilyClient | None = None,
 ) -> dict[str, Any]:
@@ -92,7 +92,7 @@ async def asearch_knowledge(
 
     cleaned_queries = _clean_queries(queries)
     root = Path(artifact_root)
-    manifest = Path(manifest_path) if manifest_path is not None else root / "manifest.json"
+    manifest = Path(manifest_path) if manifest_path is not None else root / "artifacts" / "manifest.json"
     request_payload = {
         "queries": cleaned_queries,
         "intent": intent,
@@ -103,9 +103,10 @@ async def asearch_knowledge(
         "exclude_domains": exclude_domains or [],
     }
     cache_key = stable_cache_key("search", request_payload)
-    cached = None if force_refresh else read_cache(root, cache_key)
+    cached = None if force_refresh else await asyncio.to_thread(read_cache, root, cache_key)
     if cached is not None:
-        return _persist_search_result(
+        return await asyncio.to_thread(
+            _persist_search_result,
             cached,
             status="cached",
             artifact_root=root,
@@ -179,9 +180,10 @@ async def asearch_knowledge(
             "concurrency": len(cleaned_queries),
         },
     }
-    write_cache(root, cache_key, payload)
+    await asyncio.to_thread(write_cache, root, cache_key, payload)
     status = "partial" if errors else "ok"
-    return _persist_search_result(
+    return await asyncio.to_thread(
+        _persist_search_result,
         payload,
         status=status,
         artifact_root=root,
@@ -211,12 +213,44 @@ def _persist_search_result(
         summary=f"Tavily search evidence for {', '.join(evidence.get('queries', [])[:2])}",
         metadata={"provider": "tavily", "intent": evidence.get("intent"), "cache_hit": cache_hit},
     )
-    return {
+    return _compact_search_result(evidence, artifact, status=status)
+
+
+def _compact_search_result(
+    evidence: dict[str, Any],
+    artifact: dict[str, Any],
+    *,
+    status: str,
+) -> dict[str, Any]:
+    results = _dict_list(evidence.get("results"))
+    queries = [str(query) for query in evidence.get("queries", []) if str(query).strip()]
+    query_results = _dict_list(evidence.get("query_results"))
+    failed_query_count = sum(1 for item in query_results if item.get("status") != "ok")
+    compact: dict[str, Any] = {
         "status": status,
         "artifact": artifact,
-        "results": evidence.get("results", []),
-        "query_results": evidence.get("query_results", []),
+        "result_count": len(results),
+        "query_count": len(queries),
+        "queries": queries,
+        "preview_results": [_compact_search_preview(item) for item in results[:3]],
     }
+    if failed_query_count:
+        compact["failed_query_count"] = failed_query_count
+    return compact
+
+
+def _compact_search_preview(item: dict[str, Any]) -> dict[str, Any]:
+    preview = {
+        "title": item.get("title"),
+        "url": item.get("url"),
+        "domain": item.get("domain"),
+        "score": item.get("score"),
+    }
+    return {key: value for key, value in preview.items() if value not in (None, "", [])}
+
+
+def _dict_list(value: Any) -> list[dict[str, Any]]:
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
 
 def _build_search_payload(

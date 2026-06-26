@@ -3,6 +3,7 @@ import {
   buildToolCallDisplay,
   buildToolResultDisplay,
   normalizeTodoStatus,
+  shouldHideToolResult,
 } from "./toolDisplay.ts";
 
 const todoResult = buildToolResultDisplay({
@@ -97,5 +98,93 @@ assert.ok(bashCall.keyValues.some((item) => item.label === "超时" && item.valu
 
 assert.equal(normalizeTodoStatus("in_progress").label, "进行中");
 assert.equal(normalizeTodoStatus("completed").tone, "success");
+
+assert.equal(
+  shouldHideToolResult({
+    name: "read_file",
+    content: "Long file content that should stay out of the visible chat transcript.",
+  }),
+  true,
+);
+
+assert.equal(
+  shouldHideToolResult({
+    name: "execute_bash",
+    content: JSON.stringify({
+      status: "ok",
+      exit_code: 0,
+      command: "Get-ChildItem frontend/src -Recurse",
+      stdout: "a very long directory listing",
+      stderr: "",
+    }),
+  }),
+  true,
+);
+
+assert.equal(
+  shouldHideToolResult({
+    name: "execute_bash",
+    content: JSON.stringify({
+      status: "ok",
+      exit_code: 0,
+      command: "python /skill_packs/academic-paper-writing/skills/literature-review/scripts/run.py --input x --output y",
+      stdout: "{\"artifact_type\":\"literature_report\"}",
+      stderr: "",
+    }),
+  }),
+  false,
+);
+
+assert.equal(
+  shouldHideToolResult({
+    name: "read_file",
+    content: "Error: file not found",
+  }),
+  false,
+);
+
+const compactSearchResult = buildToolResultDisplay({
+  name: "search_knowledge",
+  content: JSON.stringify({
+    status: "ok",
+    artifact: {
+      artifact_id: "search-evidence-1",
+      artifact_type: "search_evidence",
+      path: ".writeagent/projects/default/artifacts/search_evidence/search-evidence-1.json",
+    },
+    result_count: 2,
+    query_count: 1,
+    queries: ["agentic writing"],
+    preview_results: [
+      {
+        title: "Agentic writing systems",
+        url: "https://example.com/agentic-writing",
+        domain: "example.com",
+        score: 0.92,
+      },
+    ],
+  }),
+});
+
+assert.equal(compactSearchResult.kind, "artifact");
+assert.equal(compactSearchResult.toolName, "search_knowledge");
+assert.equal(compactSearchResult.markdown, undefined);
+assert.equal(compactSearchResult.paths.length, 0);
+assert.ok(compactSearchResult.summary.includes("2"));
+assert.ok(compactSearchResult.keyValues.length <= 3);
+assert.ok(compactSearchResult.keyValues.some((item) => item.value === "2"));
+assert.ok(!compactSearchResult.rawText.includes("large_tool_results"));
+
+const offloadedSearchResult = buildToolResultDisplay({
+  name: "search_knowledge",
+  content:
+    "Tool result too large, the result of this tool call call_abc was saved in the filesystem at this path: /large_tool_results/call_abc\n\nYou can read the result from the filesystem by using the read_file tool.",
+});
+
+assert.equal(offloadedSearchResult.kind, "artifact");
+assert.equal(offloadedSearchResult.markdown, undefined);
+assert.equal(offloadedSearchResult.paths.length, 0);
+assert.ok(!offloadedSearchResult.summary.includes("/large_tool_results"));
+assert.ok(!offloadedSearchResult.keyValues.some((item) => item.value.includes("large_tool_results")));
 
 console.log("toolDisplay tests passed");
