@@ -40,8 +40,8 @@ function formatSubagentStatus(rawStatus: string, errorMessage: string): { key: s
     return { key: "completed", label: "completed" };
   }
   if (rawStatus === "error" || rawStatus === "failed") {
-    if (/approval|interrupt|requires approval/i.test(errorMessage)) {
-      return { key: "awaiting", label: "awaiting approval" };
+    if (/ask_user|approval|interrupt|requires approval/i.test(errorMessage)) {
+      return { key: "awaiting", label: "awaiting input" };
     }
     return { key: "error", label: "error" };
   }

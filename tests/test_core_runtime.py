@@ -6,10 +6,18 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from langchain.agents.middleware.types import ModelResponse
+from langchain_core.messages import AIMessage
+from langgraph.errors import GraphBubbleUp
 
 from agent_core.config import ModelConfig, RuntimeConfig, sanitize_project_id
 from agent_core.context import AgentRuntimeContext
-from agent_core.factory import _project_config_from_runtime, create_write_agent
+from agent_core.factory import (
+    _ensure_project_state_async,
+    _project_config_from_runtime,
+    create_write_agent,
+)
+import agent_core.factory as factory_module
 from artifacts.manifest import ArtifactManifest
 from artifacts.schemas import ArtifactMeta
 from middleware.guardrails import check_command
@@ -83,6 +91,14 @@ def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
     }
     assert captured["interrupt_on"]["ask_user"]["allowed_decisions"] == ["respond"]
     assert captured["interrupt_on"]["execute_bash"] is False
+    assert captured["subagents"]
+    for subagent in captured["subagents"]:
+        middleware_names = {mw.name for mw in subagent["middleware"]}
+        assert {
+            "writeagent_workflow_gate",
+            "writeagent_trace",
+            "writeagent_guardrails",
+        }.issubset(middleware_names)
     assert [p.paths for p in captured["permissions"] if p.mode == "allow"][0] == [
         "/.writeagent/projects",
         "/.writeagent/projects/**",
@@ -90,6 +106,31 @@ def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
     for tool in captured["tools"]:
         schema_model = tool.args_schema or tool.get_input_schema()
         assert "runtime" not in schema_model.model_json_schema().get("properties", {})
+
+
+def test_ensure_project_state_async_runs_outside_event_loop(monkeypatch, tmp_path):
+    calls: list[str] = []
+
+    def record(label: str) -> None:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            calls.append(label)
+            return
+        raise AssertionError(f"{label} ran in the event loop thread")
+
+    monkeypatch.setattr(
+        factory_module,
+        "_ensure_project_state",
+        lambda project_cfg, workflow: record("ensure_project_state"),
+    )
+
+    cfg = RuntimeConfig(repo_root=Path.cwd(), workspace_root=tmp_path / ".writeagent")
+    workflow = load_workflow(cfg.skill_pack_root / "workflow.yaml")
+
+    asyncio.run(_ensure_project_state_async(cfg.for_project("threaded-project"), workflow))
+
+    assert calls == ["ensure_project_state"]
 
 
 def test_tool_runtime_project_context_survives_threaded_execution(tmp_path):
@@ -107,6 +148,82 @@ def test_tool_runtime_project_context_survives_threaded_execution(tmp_path):
         return await trace.awrap_tool_call(request, handler)
 
     assert asyncio.run(run_tool()) == "20260626-143012_thread-xyz"
+
+
+def test_trace_middleware_records_interrupted_subagent_tool_call(tmp_path):
+    cfg = RuntimeConfig(repo_root=Path.cwd(), workspace_root=tmp_path / ".writeagent")
+    trace = TraceMiddleware(
+        TraceStore(tmp_path / "fallback.jsonl"),
+        runtime_config=cfg,
+        agent_scope="subagent",
+        agent_name="requirement-analysis-agent",
+    )
+    request = SimpleNamespace(
+        runtime=SimpleNamespace(context=AgentRuntimeContext(project_id="20260626-143012_thread-hitl")),
+        tool_call={
+            "name": "ask_user",
+            "args": {"question": "请选择目标期刊"},
+            "id": "call-hitl",
+        },
+    )
+
+    def interrupted(_request):
+        raise GraphBubbleUp()
+
+    try:
+        trace.wrap_tool_call(request, interrupted)
+    except GraphBubbleUp:
+        pass
+    else:  # pragma: no cover - defensive assertion for this test
+        raise AssertionError("GraphBubbleUp should propagate")
+
+    events = TraceStore(cfg.for_project("20260626-143012_thread-hitl").trace_path).read_all()
+    assert len(events) == 1
+    assert events[0].event_type == "tool_call"
+    assert events[0].status == "interrupted"
+    assert events[0].payload["tool"] == "ask_user"
+    assert events[0].payload["agent_scope"] == "subagent"
+    assert events[0].payload["agent_name"] == "requirement-analysis-agent"
+    assert events[0].payload["error_type"] == "GraphBubbleUp"
+
+
+def test_trace_middleware_records_model_call_without_message_content(tmp_path):
+    cfg = RuntimeConfig(repo_root=Path.cwd(), workspace_root=tmp_path / ".writeagent")
+    trace = TraceMiddleware(
+        TraceStore(tmp_path / "fallback.jsonl"),
+        runtime_config=cfg,
+        agent_scope="subagent",
+        agent_name="requirement-analysis-agent",
+    )
+    request = SimpleNamespace(
+        runtime=SimpleNamespace(context=AgentRuntimeContext(project_id="20260626-143012_thread-model")),
+        model="fake-model",
+        messages=[{"role": "human", "content": "secret draft content"}],
+    )
+
+    def handler(_request):
+        return ModelResponse(
+            result=[
+                AIMessage(
+                    content="do not record this model response",
+                    tool_calls=[{"name": "ask_user", "args": {"question": "目标期刊"}, "id": "call-model"}],
+                )
+            ]
+        )
+
+    response = trace.wrap_model_call(request, handler)
+
+    assert response.result[0].tool_calls[0]["name"] == "ask_user"
+    events = TraceStore(cfg.for_project("20260626-143012_thread-model").trace_path).read_all()
+    assert len(events) == 1
+    assert events[0].event_type == "model_call"
+    assert events[0].status == "success"
+    assert events[0].payload["agent_scope"] == "subagent"
+    assert events[0].payload["agent_name"] == "requirement-analysis-agent"
+    assert events[0].payload["message_count"] == 1
+    assert events[0].payload["tool_calls"] == ["ask_user"]
+    assert "secret draft content" not in events[0].model_dump_json()
+    assert "do not record this model response" not in events[0].model_dump_json()
 
 
 def test_execute_bash_guardrail_allows_only_current_project_tmp_helpers():

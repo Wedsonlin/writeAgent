@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 from langchain.tools import ToolRuntime
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
@@ -59,17 +59,14 @@ def create_write_agent(
     delegation_runtime = DelegationRuntime(registry or discovered_agents.registry, trace_store=trace_store)
 
     tools = _build_tools(cfg, trace_store, delegation_runtime, workflow)
-    middleware = [
-        WorkflowGateMiddleware(
-            workflow,
-            cfg.manifest_path,
-            trace_store=trace_store,
-            skill_pack_root=cfg.skill_pack_root,
-            runtime_config=cfg,
-        ),
-        TraceMiddleware(trace_store, runtime_config=cfg),
-        GuardrailsMiddleware(cfg.allowed_roots, repo_root=cfg.repo_root),
-    ]
+    middleware = _build_agent_middleware(
+        cfg,
+        workflow,
+        trace_store,
+        agent_scope="root",
+        agent_name="writeAgent",
+    )
+    subagents = _with_subagent_middleware(discovered_agents.subagents, cfg, workflow, trace_store)
     selected_model = model if model is not None else cfg.model.model
     if deep_agent_factory is None:
         _configure_general_purpose_subagent(selected_model, enabled=not discovered_agents.disable_general_purpose)
@@ -80,7 +77,7 @@ def create_write_agent(
         tools=tools,
         system_prompt=(cfg.skill_pack_root / "system_prompt.md").read_text(encoding="utf-8"),
         middleware=middleware,
-        subagents=discovered_agents.subagents,
+        subagents=subagents,
         skills=[str(cfg.skill_pack_root / "skills")],
         memory=_build_memory_sources(cfg),
         permissions=_build_filesystem_permissions(),
@@ -134,6 +131,60 @@ def _configure_general_purpose_subagent(model: Any, *, enabled: bool) -> None:
         model,
         HarnessProfile(general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)), # disable general purpose subagent
     )
+
+
+def _build_agent_middleware(
+    cfg: RuntimeConfig,
+    workflow: Any,
+    trace_store: TraceStore,
+    *,
+    agent_scope: str,
+    agent_name: str,
+) -> list[Any]:
+    return [
+        WorkflowGateMiddleware(
+            workflow,
+            cfg.manifest_path,
+            trace_store=trace_store,
+            skill_pack_root=cfg.skill_pack_root,
+            runtime_config=cfg,
+        ),
+        TraceMiddleware(
+            trace_store,
+            runtime_config=cfg,
+            agent_scope=agent_scope,
+            agent_name=agent_name,
+        ),
+        GuardrailsMiddleware(cfg.allowed_roots, repo_root=cfg.repo_root),
+    ]
+
+
+def _with_subagent_middleware(
+    subagents: Sequence[dict[str, Any]],
+    cfg: RuntimeConfig,
+    workflow: Any,
+    trace_store: TraceStore,
+) -> list[dict[str, Any]]:
+    enriched: list[dict[str, Any]] = []
+    for subagent in subagents:
+        agent_name = str(subagent.get("name") or "subagent")
+        existing_middleware = list(subagent.get("middleware", []))
+        enriched.append(
+            {
+                **subagent,
+                "middleware": [
+                    *_build_agent_middleware(
+                        cfg,
+                        workflow,
+                        trace_store,
+                        agent_scope="subagent",
+                        agent_name=agent_name,
+                    ),
+                    *existing_middleware,
+                ],
+            }
+        )
+    return enriched
 
 
 def _build_tools(
@@ -252,7 +303,7 @@ def _build_tools(
 
     async def asearch_knowledge_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
         project_cfg = _project_config_from_runtime(cfg, runtime)
-        _ensure_project_state(project_cfg, workflow)
+        await _ensure_project_state_async(project_cfg, workflow)
         return await asearch_knowledge(
             artifact_root=project_cfg.project_root,
             manifest_path=project_cfg.manifest_path,
@@ -261,7 +312,7 @@ def _build_tools(
 
     async def aextract_sources_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
         project_cfg = _project_config_from_runtime(cfg, runtime)
-        _ensure_project_state(project_cfg, workflow)
+        await _ensure_project_state_async(project_cfg, workflow)
         return await aextract_sources(
             artifact_root=project_cfg.project_root,
             manifest_path=project_cfg.manifest_path,
@@ -366,6 +417,11 @@ def _ensure_project_state(project_cfg: RuntimeConfig, workflow: Any) -> None:
     project_cfg.ensure_dirs()
     if not project_cfg.progress_path.exists():
         ProgressLedger.create(workflow.id, workflow.stage_ids).save(project_cfg.progress_path)
+
+
+async def _ensure_project_state_async(project_cfg: RuntimeConfig, workflow: Any) -> None:
+    """Run project directory setup off the ASGI event loop."""
+    await asyncio.to_thread(_ensure_project_state, project_cfg, workflow)
 
 
 def _trace_store_for_project(project_cfg: RuntimeConfig, fallback: TraceStore) -> TraceStore:

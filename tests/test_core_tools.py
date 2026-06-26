@@ -6,6 +6,7 @@ from pathlib import Path
 
 from artifacts.manifest import ArtifactManifest
 from tools.extract_sources import aextract_sources
+from tools.search_common import write_cache
 from tools.search_knowledge import asearch_knowledge
 import tools.extract_sources as extract_sources_module
 import tools.search_knowledge as search_knowledge_module
@@ -54,6 +55,29 @@ class FakeFailingClient:
 
     async def search(self, _payload: dict) -> dict:
         raise RuntimeError("provider failed with super-secret-token")
+
+
+def test_atomic_write_tmp_name_avoids_windows_max_path():
+    key = "b738ace948d8e95135f30a4b2d9c4f070f5c716686867ba4b1e517ad34951330"
+    root = Path(
+        r"C:\Users\Administrator\Desktop\thesis\高级人工智能\finalAssignment\writeAgent"
+        r"\.writeagent\projects\20260626-152358_thread-cdd8f114-7b87-4fc2-96f9-7e53222b1357"
+    )
+    target = root / "cache" / "search" / f"{key[:32]}.json"
+    legacy_tmp = (root / "cache" / "search" / f"{key}.json").with_suffix(".json." + "a" * 32 + ".tmp")
+    short_tmp = target.parent / f".{'a' * 32}.tmp"
+    assert len(str(target)) < 260
+    assert len(str(legacy_tmp)) > 260
+    assert len(str(short_tmp)) < len(str(legacy_tmp))
+
+
+def test_write_cache_with_sha256_key(tmp_path: Path):
+    key = "b738ace948d8e95135f30a4b2d9c4f070f5c716686867ba4b1e517ad34951330"
+    write_cache(tmp_path, key, {"cached": True})
+    cache_file = tmp_path / "cache" / "search" / f"{key[:32]}.json"
+    assert cache_file.exists()
+    assert json.loads(cache_file.read_text(encoding="utf-8"))["cached"] is True
+    assert list(cache_file.parent.glob(".*.tmp")) == []
 
 
 def test_search_knowledge_persists_compact_evidence_manifest_and_cache(tmp_path: Path):

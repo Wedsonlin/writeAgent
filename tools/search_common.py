@@ -18,6 +18,8 @@ from artifacts.schemas import ArtifactMeta
 
 ARTIFACT_TYPE = "search_evidence"
 _WRITE_LOCK = threading.Lock()
+_ATOMIC_WRITE_LOCKS: dict[str, threading.Lock] = {}
+_ATOMIC_WRITE_LOCKS_GUARD = threading.Lock()
 
 
 def cache_ttl_days() -> int:
@@ -98,11 +100,42 @@ def write_evidence_artifact(
 
 
 def _cache_path(artifact_root: str | Path, key: str) -> Path:
-    return Path(artifact_root) / "cache" / "search" / f"{key}.json"
+    # Keep filenames short on Windows where project paths can already be ~230 chars.
+    cache_id = key if len(key) <= 32 else key[:32]
+    return Path(artifact_root) / "cache" / "search" / f"{cache_id}.json"
+
+
+def _win_extended_path(path: Path) -> str:
+    if os.name != "nt":
+        return str(path)
+    resolved = os.path.normpath(os.path.abspath(str(path)))
+    if resolved.startswith("\\\\?\\"):
+        return resolved
+    return "\\\\?\\" + resolved
+
+
+def _lock_for_atomic_write(path: Path) -> threading.Lock:
+    key = str(path.resolve())
+    with _ATOMIC_WRITE_LOCKS_GUARD:
+        lock = _ATOMIC_WRITE_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _ATOMIC_WRITE_LOCKS[key] = lock
+        return lock
 
 
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + f".{uuid4().hex}.tmp")
-    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
+    target = Path(path)
+    with _lock_for_atomic_write(target):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Keep temp names short: appending to `{sha256}.json` can exceed Windows MAX_PATH.
+        tmp = target.parent / f".{uuid4().hex}.tmp"
+        text = json.dumps(payload, ensure_ascii=False, indent=2)
+        try:
+            with open(_win_extended_path(tmp), "w", encoding="utf-8") as fh:
+                fh.write(text)
+            os.replace(_win_extended_path(tmp), _win_extended_path(target))
+        except Exception:
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+            raise

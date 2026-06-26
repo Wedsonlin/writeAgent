@@ -18,6 +18,8 @@ Polishing preflight and recovery:
 - Do not run the deterministic script when `polished_markdown` is absent.
 - If the current input contains only `formatted_draft`, `formatted_draft_path`, or formatted Markdown, first perform the language polishing yourself and write the full final manuscript into top-level `polished_markdown`. Do not ask the user to provide an external polished draft.
 - Do not pass through `formatted_draft.markdown` as the final manuscript. If no wording changes are needed, explicitly copy the full text into `polished_markdown` and record in `polish_log` why only final consistency/export checks were applied.
+- Do not pass through `formatted_draft.markdown` when template-like repetition remains; perform deduplication rewrites while preserving headings, citation markers, bibliography entries, and protected claims.
+- Record deduplication rewrites in `polish_log` with the affected section, change type, and reason.
 - Do not rely on the script to create `polish_log`. Create a real `polish_log[]` before the script runs, with entries explaining the changed section, change type, and reason.
 - Generate `plagiarism_optimization[]` before the script runs. If no commercial plagiarism report is supplied, provide conservative similarity-reduction suggestions based on repeated wording, template expressions, and dense definition/list passages.
 - Run a heading and citation preservation gate before the script: `polished_markdown` must keep the exact same Markdown heading lines as `formatted_draft.markdown`, and the multiset/count of every body citation marker `[n]` must match the formatted draft. You may improve wording inside paragraphs, but do not add section numbering, remove headings, renumber citations, add extra citation markers, or drop existing markers.
@@ -27,7 +29,7 @@ Polishing preflight and recovery:
 
 Required output contract:
 - Before running the script, read the formatted draft Markdown content. Do not pass only `formatted_draft_path`; provide the final text in top-level `polished_markdown`.
-- If you decide the formatted draft already satisfies the language requirements, still set `polished_markdown` to the full formatted Markdown and include a `polish_log` entry explaining that only final consistency/export checks were applied.
+- If you decide the formatted draft already satisfies the language requirements and has no obvious template-like repetition, still set `polished_markdown` to the full formatted Markdown and include a `polish_log` entry explaining that only final consistency/export checks were applied.
 - `polished_draft.markdown` and `polished_draft.markdown_path` for human review.
 - `polished_draft.docx_path` as the required final DOCX export.
 - `polished_draft.pdf_path` when PDF generation succeeds; otherwise keep it null.

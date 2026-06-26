@@ -16,11 +16,15 @@ Writing workflow:
 - Each section drafting card must require argumentative depth, not just length. A complete section must explicitly cover: research problem or section claim, mechanism, evidence interpretation, comparison or tradeoff, limitation or boundary, and argument_return to the paper's core argument or innovation point.
 - For long drafts, call `content-section-writer-agent` through the `task` tool with small batches of section drafting card objects. The section writer returns local `section_drafts`; it must not produce the final `draft` artifact.
 - Integrate the returned sections yourself: unify terminology, remove duplicated boilerplate, check transitions, and make the final prose coherent across chapters.
+- `content_markdown` must be authored by the agent or section writer from the section drafting card, outline, and literature evidence.
+- Do not use Python helper scripts to generate academic prose, batch-fill sections, or loop over one prose template.
+- Do not use `paragraph_for`, a shared section paragraph factory, or any equivalent deterministic prose generator for `draft.sections[].content_markdown`.
+- scripts may serialize JSON but must not author paper prose.
 
 Draft preflight and recovery:
 - Do not run `paper-content-generation/scripts/run.py` when `draft` is absent from the script input JSON.
 - If the current content_generation input contains only `outline`, `literature_report`, Markdown paths, artifact references, or JSON anchors, first author the complete `draft` object yourself from those materials. Do not ask the user to provide an external draft.
-- If `content-section-writer-agent` or the `task` tool is unavailable, fails, or returns incomplete `section_drafts`, continue inside this agent: draft each section yourself, then integrate the sections into one coherent `draft`.
+- If `content-section-writer-agent` or the `task` tool is unavailable, fails, or returns incomplete `section_drafts`, continue inside this agent: reason through each section card, draft each section yourself, then integrate the sections into one coherent `draft`; do not construct a deterministic template script as a substitute.
 - If the deterministic script returns `content-generation input must include a LLM-authored draft object`, treat `content-generation input must include a LLM-authored draft object` as an early script execution error. Recover by adding the complete LLM-authored `draft` object to the input and rerun the deterministic Skill script; do not mark the workflow blocked for this reason.
 - The final script input must contain `writing_task`, `outline`, `literature_report`, and `draft`. The `draft.sections[]` entries must already include substantive prose, synchronized citations, evidence traces, section_depth_checks, transitions, support status, linked arguments, and linked innovation points before the script runs.
 

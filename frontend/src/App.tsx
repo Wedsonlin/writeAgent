@@ -4,6 +4,7 @@ import { agentUrl, fetchCaseRequirement } from "./api/workflow";
 import { ChatPanel } from "./components/ChatPanel";
 import { InterruptCard, type ResumeTarget } from "./components/InterruptCard";
 import { WorkflowProgress } from "./components/WorkflowProgress";
+import { useThreadInterrupts } from "./hooks/useThreadInterrupts";
 import { type ToolResult, useToolResults } from "./hooks/useToolResults";
 import { useWorkflowProgress } from "./hooks/useWorkflowProgress";
 import {
@@ -16,6 +17,7 @@ import {
   saveProjectSession,
   type ProjectSession,
 } from "./lib/projectSession";
+import { extractThreadStreamInterrupts, mergeInterrupts } from "./lib/threadInterrupts";
 import type { WorkflowMeta, WorkflowProgressPayload } from "./types/workflow";
 import "./styles.css";
 
@@ -24,6 +26,8 @@ export default function App() {
   const [caseLoadError, setCaseLoadError] = useState<string | null>(null);
   const [isLoadingCase, setIsLoadingCase] = useState(false);
   const [projectSession, setProjectSession] = useState<ProjectSession>(() => ensureProjectSession());
+  const [resumingInterruptKey, setResumingInterruptKey] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
   const stream = useStream({
     apiUrl: agentUrl,
     assistantId: "writeagent",
@@ -51,9 +55,19 @@ export default function App() {
     () => Array.from((stream.subagents ?? new Map()).values()) as unknown as Record<string, unknown>[],
     [stream.subagents],
   );
-  const streamInterrupts = (stream as { interrupts?: unknown[] }).interrupts ?? [];
-  const activeInterrupt = stream.interrupt ?? streamInterrupts[0];
   const isRunning = Boolean(stream.isLoading);
+  const streamInterrupts = (stream as { interrupts?: unknown[] }).interrupts ?? [];
+  const threadInterrupts = extractThreadStreamInterrupts((stream as { getThread?: () => unknown }).getThread?.());
+  const liveInterrupts = threadInterrupts.length > 0 ? threadInterrupts : streamInterrupts;
+  const activeThreadId = normalizeThreadId(String((stream as { threadId?: unknown }).threadId ?? "")) ?? normalizeThreadId(projectSession.threadId) ?? undefined;
+  const fallbackInterrupts = useThreadInterrupts(agentUrl, activeThreadId, !isRunning && liveInterrupts.length === 0);
+  const mergedInterrupts = useMemo(
+    () => mergeInterrupts(liveInterrupts, fallbackInterrupts),
+    [liveInterrupts, fallbackInterrupts],
+  );
+  const activeInterrupt = isRunning
+    ? undefined
+    : mergedInterrupts.find((interrupt) => pendingInterruptKey(interrupt) !== resumingInterruptKey);
   const workflow = useWorkflowProgress(isRunning, projectSession.projectName);
   const toolResults = useToolResults(messages);
   const streamError = stringifyError(stream.error);
@@ -84,6 +98,20 @@ export default function App() {
     saveProjectSession(next);
     setProjectSession(next);
     window.location.reload();
+  }
+
+  async function handleResumeInterrupt(interrupt: unknown, resume: unknown, target?: ResumeTarget) {
+    const interruptKey = pendingInterruptKey(interrupt);
+    setResumeError(null);
+    setResumingInterruptKey(interruptKey);
+    try {
+      await stream.respond(resume, respondOptions(projectSession, target) as never);
+    } catch (error) {
+      setResumeError(stringifyError(error) ?? "无法提交回复，请稍后重试。");
+      console.error("writeAgent resume error", error);
+    } finally {
+      setResumingInterruptKey((current) => current === interruptKey ? null : current);
+    }
   }
 
   async function handleLoadCaseRequirement() {
@@ -166,11 +194,9 @@ export default function App() {
       {activeInterrupt ? (
         <InterruptCard
           interrupt={activeInterrupt}
-          onResume={(resume, target) =>
-            void stream
-              .respond(resume, respondOptions(projectSession, target) as never)
-              .catch((error: unknown) => console.error("writeAgent resume error", error))
-          }
+          error={resumeError}
+          isSubmitting={pendingInterruptKey(activeInterrupt) === resumingInterruptKey}
+          onResume={(resume, target) => void handleResumeInterrupt(activeInterrupt, resume, target)}
         />
       ) : null}
 
@@ -229,10 +255,32 @@ function runtimeContext(projectSession: ProjectSession) {
 
 function respondOptions(projectSession: ProjectSession, target?: ResumeTarget) {
   return {
-    ...target,
+    ...compactResumeTarget(target),
     config: { configurable: runtimeContext(projectSession) },
     metadata: { source: "frontend" },
   };
+}
+
+function compactResumeTarget(target?: ResumeTarget) {
+  if (!target?.interruptId) {
+    return {};
+  }
+  if (target.namespace && target.namespace.length > 0) {
+    return { interruptId: target.interruptId, namespace: target.namespace };
+  }
+  return { interruptId: target.interruptId };
+}
+
+function pendingInterruptKey(interrupt: unknown): string | null {
+  if (!interrupt || typeof interrupt !== "object") {
+    return null;
+  }
+  const value = interrupt as Record<string, unknown>;
+  return stringValue(value.id) ?? stringValue(value.interruptId) ?? stringValue(value.interrupt_id) ?? JSON.stringify(value);
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function stringifyError(error: unknown): string | null {

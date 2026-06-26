@@ -3,9 +3,11 @@ import { useMemo, useState } from "react";
 interface Props {
   interrupt: unknown;
   onResume: (resume: unknown, target?: ResumeTarget) => void;
+  isSubmitting?: boolean;
+  error?: string | null;
 }
 
-export function InterruptCard({ interrupt, onResume }: Props) {
+export function InterruptCard({ interrupt, onResume, isSubmitting = false, error = null }: Props) {
   const request = useMemo(() => firstActionRequest(interrupt), [interrupt]);
   const resumeTarget = useMemo(() => interruptTarget(interrupt), [interrupt]);
   const askUserPrompt = useMemo(() => askUserPromptFrom(request), [request]);
@@ -70,6 +72,9 @@ export function InterruptCard({ interrupt, onResume }: Props) {
           <form
             onSubmit={(event) => {
               event.preventDefault();
+              if (isSubmitting) {
+                return;
+              }
               onResume({ decisions: [{ type: "respond", message: response }] }, resumeTarget);
             }}
           >
@@ -78,8 +83,9 @@ export function InterruptCard({ interrupt, onResume }: Props) {
               onChange={(event) => setResponse(event.target.value)}
               placeholder="输入给 Agent 的回复…"
             />
-            <button className="btn btn-approve" type="submit" disabled={!response.trim()}>
-              提交回复
+            {error ? <p className="input-error">{error}</p> : null}
+            <button className="btn btn-approve" type="submit" disabled={isSubmitting || !response.trim()}>
+              {isSubmitting ? "提交中..." : "提交回复"}
             </button>
           </form>
         ) : (
@@ -174,7 +180,10 @@ function interruptTarget(interrupt: unknown): ResumeTarget | undefined {
   const value = interrupt as Record<string, unknown>;
   const interruptId = stringValue(value.id) ?? stringValue(value.interruptId) ?? stringValue(value.interrupt_id);
   const namespace = Array.isArray(value.namespace) ? value.namespace.map(String) : undefined;
-  return interruptId ? { interruptId, namespace } : undefined;
+  if (!interruptId) {
+    return undefined;
+  }
+  return namespace && namespace.length > 0 ? { interruptId, namespace } : { interruptId };
 }
 
 function stringValue(value: unknown): string | undefined {

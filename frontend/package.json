@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test:tool-display": "node --experimental-strip-types src/lib/toolDisplay.test.mjs && node --experimental-strip-types src/lib/projectSession.test.mjs"
+    "test:tool-display": "node --experimental-strip-types src/lib/toolDisplay.test.mjs && node --experimental-strip-types src/lib/projectSession.test.mjs && node --experimental-strip-types src/lib/threadInterrupts.test.mjs"
   },
   "dependencies": {
     "@langchain/react": "^1.0.18",

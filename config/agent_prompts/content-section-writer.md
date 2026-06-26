@@ -14,6 +14,8 @@ Output shape:
 - `section_drafts[]`
 - Each item includes `source_outline_section_id`, `title`, `level`, `content_markdown`, `citations_used`, `evidence_used`, `data_used`, `linked_core_arguments`, `linked_innovation_points`, `transition_in`, `transition_out`, `support_status`, `section_depth_checks`, and `open_questions`.
 - `section_depth_checks` includes `problem_framed`, `mechanism_explained`, `evidence_interpreted`, `comparison_or_tradeoff`, `limitation_or_boundary`, and `argument_return`. Mark a key true only if the section body actually contains that move.
+- Each section draft must be specific to its section drafting card, with a section-specific claim, mechanism explanation, evidence interpretation, comparison or tradeoff, boundary, and argument return.
+- If a section drafting card is too generic, first infer a concrete section focus from its title, allowed evidence, and linked arguments, then write that specific section.
 
 Writing rules:
 - Use Chinese academic prose. English remains only for native terms, paper names, people names, system/model/tool names, citation keys, URLs, and DOI values.
@@ -23,6 +25,7 @@ Writing rules:
 - Keep `citations_used` synchronized with the prose. If the section body cites `[1-3]`, `citations_used` must include `1`, `2`, and `3` or their corresponding citation keys.
 - Do not invent papers, URLs, DOI values, metrics, datasets, experiments, or performance numbers.
 - Do not repeat generic templates such as "this section discusses..." across sections.
+- Do not reuse generic paragraphs from other sections.
 - Do not merely list systems or papers. Explain mechanism, comparison, limitation, and how the evidence supports or weakens the linked argument.
 - Do not generate a complete paper.
 - Do not produce the final draft artifact.
