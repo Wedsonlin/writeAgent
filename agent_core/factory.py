@@ -11,7 +11,6 @@ from pydantic import BaseModel
 
 from delegation.discovery import AgentDiscovery
 from delegation.registry import AgentRegistry
-from delegation.runtime import DelegationRuntime
 from middleware.guardrails import GuardrailsMiddleware
 from middleware.trace import TraceMiddleware
 from middleware.workflow_gate import WorkflowGateMiddleware
@@ -56,9 +55,12 @@ def create_write_agent(
         skill_pack_root=cfg.skill_pack_root,
         repo_root=cfg.repo_root,
     )
-    delegation_runtime = DelegationRuntime(registry or discovered_agents.registry, trace_store=trace_store)
+    # A2A delegation is intentionally disabled at runtime. Keep the registry
+    # parameter for API compatibility while local specialists use Deep Agents
+    # `task` routing exclusively.
+    _ = registry or discovered_agents.registry
 
-    tools = _build_tools(cfg, trace_store, delegation_runtime, workflow)
+    tools = _build_tools(cfg, trace_store, workflow)
     middleware = _build_agent_middleware(
         cfg,
         workflow,
@@ -66,11 +68,26 @@ def create_write_agent(
         agent_scope="root",
         agent_name="writeAgent",
     )
-    subagents = _with_subagent_middleware(discovered_agents.subagents, cfg, workflow, trace_store)
     selected_model = model if model is not None else cfg.model.model
     if deep_agent_factory is None:
         _configure_general_purpose_subagent(selected_model, enabled=not discovered_agents.disable_general_purpose)
     creator = deep_agent_factory or _import_create_deep_agent()
+    backend = _build_filesystem_backend(cfg)
+    permissions = _build_filesystem_permissions()
+    interrupt_on = _build_interrupt_on()
+    subagents = _build_subagent_tree(
+        discovered_agents.subagents,
+        cfg,
+        workflow,
+        trace_store,
+        tools=tools,
+        model=selected_model,
+        creator=creator,
+        backend=backend,
+        permissions=permissions,
+        interrupt_on=interrupt_on,
+        child_subagent_names=discovered_agents.child_subagent_names,
+    )
     selected_checkpointer = create_checkpointer() if checkpointer is _CHECKPOINTER_DEFAULT else checkpointer
     return creator(
         model=selected_model,
@@ -80,11 +97,11 @@ def create_write_agent(
         subagents=subagents,
         skills=[str(cfg.skill_pack_root / "skills")],
         memory=_build_memory_sources(cfg),
-        permissions=_build_filesystem_permissions(),
-        backend=_build_filesystem_backend(cfg),
+        permissions=permissions,
+        backend=backend,
         context_schema=AgentRuntimeContext,
         checkpointer=selected_checkpointer,
-        interrupt_on=_build_interrupt_on(),
+        interrupt_on=interrupt_on,
         name="writeAgent",
     )
 
@@ -165,32 +182,95 @@ def _with_subagent_middleware(
     workflow: Any,
     trace_store: TraceStore,
 ) -> list[dict[str, Any]]:
+    return [_enrich_subagent(subagent, cfg, workflow, trace_store) for subagent in subagents]
+
+
+def _enrich_subagent(
+    subagent: dict[str, Any],
+    cfg: RuntimeConfig,
+    workflow: Any,
+    trace_store: TraceStore,
+) -> dict[str, Any]:
+    agent_name = str(subagent.get("name") or "subagent")
+    existing_middleware = list(subagent.get("middleware", []))
+    return {
+        **subagent,
+        "middleware": [
+            *_build_agent_middleware(
+                cfg,
+                workflow,
+                trace_store,
+                agent_scope="subagent",
+                agent_name=agent_name,
+            ),
+            *existing_middleware,
+        ],
+    }
+
+
+def _strip_internal_subagent_keys(subagent: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in subagent.items() if key != "children"}
+
+
+def _subagent_children(subagent: dict[str, Any]) -> list[str]:
+    children = subagent.get("children") or []
+    return [str(child) for child in children]
+
+
+def _build_subagent_tree(
+    subagents: Sequence[dict[str, Any]],
+    cfg: RuntimeConfig,
+    workflow: Any,
+    trace_store: TraceStore,
+    *,
+    tools: Sequence[Any],
+    model: Any,
+    creator: Callable[..., Any],
+    backend: Any,
+    permissions: list[Any],
+    interrupt_on: dict[str, object],
+    child_subagent_names: set[str],
+) -> list[dict[str, Any]]:
+    by_name = {str(subagent["name"]): subagent for subagent in subagents}
+
+    def build(name: str) -> dict[str, Any]:
+        subagent = _enrich_subagent(by_name[name], cfg, workflow, trace_store)
+        children = _subagent_children(subagent)
+        if not children:
+            return _strip_internal_subagent_keys(subagent)
+
+        child_specs = [build(child_name) for child_name in children]
+        runnable = creator(
+            model=subagent.get("model", model),
+            tools=tools,
+            system_prompt=str(subagent["system_prompt"]),
+            middleware=list(subagent.get("middleware", [])),
+            subagents=child_specs,
+            skills=list(subagent.get("skills") or []),
+            permissions=permissions,
+            backend=backend,
+            context_schema=AgentRuntimeContext,
+            interrupt_on=interrupt_on,
+            name=str(subagent["name"]),
+        )
+        return {
+            "name": str(subagent["name"]),
+            "description": str(subagent["description"]),
+            "runnable": runnable,
+        }
+
     enriched: list[dict[str, Any]] = []
     for subagent in subagents:
-        agent_name = str(subagent.get("name") or "subagent")
-        existing_middleware = list(subagent.get("middleware", []))
-        enriched.append(
-            {
-                **subagent,
-                "middleware": [
-                    *_build_agent_middleware(
-                        cfg,
-                        workflow,
-                        trace_store,
-                        agent_scope="subagent",
-                        agent_name=agent_name,
-                    ),
-                    *existing_middleware,
-                ],
-            }
-        )
+        name = str(subagent["name"])
+        if name in child_subagent_names:
+            continue
+        enriched.append(build(name))
     return enriched
 
 
 def _build_tools(
     cfg: RuntimeConfig,
     trace_store: TraceStore,
-    delegation_runtime: DelegationRuntime,
     workflow: Any,
 ) -> list[Any]:
     from tools.ask_user import AskUserInput, ask_user
@@ -200,7 +280,6 @@ def _build_tools(
     from tools.search_knowledge import SearchKnowledgeInput, asearch_knowledge, search_knowledge
     from tools.update_artifact_manifest import UpdateArtifactManifestInput, update_artifact_manifest
     from tools.update_progress import UpdateProgressInput, update_progress
-    from tools.delegate_to_agent import DelegateToAgentInput, delegate_to_agent
 
     def execute_bash_tool(
         command: str,
@@ -252,9 +331,6 @@ def _build_tools(
             cache_root=_repo_virtual_path(project_cfg, project_cfg.cache_root),
         )
 
-    def delegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
-        return delegate_to_agent(delegation_runtime, **kwargs)
-
     def search_knowledge_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
         project_cfg = _project_config_from_runtime(cfg, runtime)
         _ensure_project_state(project_cfg, workflow)
@@ -297,9 +373,6 @@ def _build_tools(
 
     async def ainspect_progress_tool(runtime: ToolRuntime | None = None) -> dict[str, Any]:
         return await asyncio.to_thread(inspect_progress_tool, runtime=runtime)
-
-    async def adelegate_to_agent_tool(**kwargs: Any) -> dict[str, Any]:
-        return await asyncio.to_thread(delegate_to_agent_tool, **kwargs)
 
     async def asearch_knowledge_tool(runtime: ToolRuntime | None = None, **kwargs: Any) -> dict[str, Any]:
         project_cfg = _project_config_from_runtime(cfg, runtime)
@@ -355,13 +428,6 @@ def _build_tools(
             args_schema=NoInputToolInput,
         ),
         StructuredTool.from_function(
-            name="delegate_to_agent",
-            description="Delegate work through the A2A-compatible delegation runtime.",
-            func=delegate_to_agent_tool,
-            coroutine=adelegate_to_agent_tool,
-            args_schema=DelegateToAgentInput,
-        ),
-        StructuredTool.from_function(
             name="search_knowledge",
             description=(
                 "Search Tavily for academic papers, web background, recent updates, or citation metadata. "
@@ -389,7 +455,6 @@ def _build_interrupt_on() -> dict[str, object]:
         "update_artifact_manifest": False,
         "update_progress": False,
         "inspect_progress": False,
-        "delegate_to_agent": False,
         "search_knowledge": False,
         "extract_sources": False,
     }

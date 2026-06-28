@@ -1,4 +1,5 @@
 import { artifactFileUrl } from "../api/workflow";
+import { visibleArtifactsInArtifactRoot } from "../lib/artifactDisplay";
 import type { ArtifactMeta, WorkflowMeta, WorkflowProgressPayload, StageStatus } from "../types/workflow";
 
 const stageLabels: Record<string, string> = {
@@ -28,7 +29,10 @@ interface Props {
 export function WorkflowProgress({ meta, progress, error, projectId }: Props) {
   const stages = meta?.stages ?? [];
   const progressByStage = new Map((progress?.stages ?? []).map((stage) => [stage.stage_id, stage]));
-  const artifacts = progress?.artifacts ?? [];
+  const artifacts = visibleArtifactsInArtifactRoot(
+    progress?.artifacts ?? [],
+    projectId ?? progress?.project_id ?? null,
+  );
 
   return (
     <section className="workflow-panel">

@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { UseStreamReturn } from "@langchain/react";
 import { MessageBubble, normalizeMessage } from "./MessageBubble";
 import { SubagentCard } from "./SubagentCard";
 
 interface Props {
   messages: unknown[];
   subagents: Record<string, unknown>[];
+  stream: UseStreamReturn<Record<string, unknown>, unknown, Record<string, unknown>>;
 }
 
-export function ChatPanel({ messages, subagents }: Props) {
+export function ChatPanel({ messages, subagents, stream }: Props) {
   const subagentsById = new Map(subagents.map((subagent) => [String(subagent.id ?? ""), subagent]));
   const panelRef = useRef<HTMLElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -66,7 +68,12 @@ export function ChatPanel({ messages, subagents }: Props) {
               <div key={messageKey(message, index)} className="chat-turn">
                 <MessageBubble message={message} />
                 {turnSubagents.map((subagent, subagentIndex) => (
-                  <SubagentCard key={String(subagent.id ?? subagentIndex)} subagent={subagent} />
+                  <SubagentCard
+                    key={String(subagent.id ?? subagentIndex)}
+                    stream={stream}
+                    subagent={subagent}
+                    subagentsById={subagentsById}
+                  />
                 ))}
               </div>
             );

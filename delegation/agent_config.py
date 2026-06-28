@@ -15,6 +15,7 @@ class SubAgentConfig(BaseModel):
     prompt_file: str
     skills: list[str] = Field(default_factory=list)
     model: str | None = None
+    children: list[str] = Field(default_factory=list)
 
 
 class AgentConfig(BaseModel):

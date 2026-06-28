@@ -4,7 +4,11 @@ import {
   createProjectSession,
   loadProjectSession,
   normalizeThreadId,
+  projectSessionFromApi,
   projectQuery,
+  sessionDisplayLabel,
+  shouldActivateProjectSession,
+  sortProjectSessions,
 } from "./projectSession.ts";
 import { artifactFileUrl, workflowProgressUrl } from "../api/workflow.ts";
 
@@ -50,6 +54,45 @@ const migratedProjectNameThread = loadProjectSession(projectNameThreadStorage);
 assert.equal(migratedProjectNameThread?.threadId, uuid);
 assert.equal(migratedProjectNameThread?.projectName, `20260626-143012_thread-${uuid}`);
 assert.equal(normalizeThreadId(`20260626-143012_thread-${uuid}`), uuid);
+
+const restored = projectSessionFromApi({
+  project_id: `20260626-143012_thread-${uuid}`,
+  thread_id: uuid,
+  created_at: "2026-06-26T06:30:12.000Z",
+  updated_at: "2026-06-27T05:00:00.000Z",
+  root: `C:\\repo\\.writeagent\\projects\\20260626-143012_thread-${uuid}`,
+});
+assert.equal(restored?.threadId, uuid);
+assert.equal(restored?.projectName, `20260626-143012_thread-${uuid}`);
+assert.equal(restored?.updatedAt, "2026-06-27T05:00:00.000Z");
+
+const older = {
+  ...restored,
+  projectName: "20260625-110000_thread-9f3a1234-1111-4222-8333-abcdefabcdef",
+  threadId: "9f3a1234-1111-4222-8333-abcdefabcdef",
+  createdAt: "2026-06-25T03:00:00.000Z",
+  updatedAt: "2026-06-25T04:00:00.000Z",
+};
+assert.deepEqual(
+  sortProjectSessions([older, restored]).map((item) => item.projectName),
+  [`20260626-143012_thread-${uuid}`, "20260625-110000_thread-9f3a1234-1111-4222-8333-abcdefabcdef"],
+);
+
+assert.equal(
+  sessionDisplayLabel({
+    threadId: "ab45b623-fc0c-495d-b579-d3884e0dab8b",
+    projectName: "20260626-100222_thread-ab45b623-fc0c-495d-b579-d3884e0dab8b",
+    createdAt: "2026-06-26T10:02:22.000Z",
+  }),
+  "2026-06-26 10:02 · ab45b623",
+);
+
+assert.equal(shouldActivateProjectSession({}), false);
+assert.equal(shouldActivateProjectSession({ liveMessageCount: 0, persistedMessageCount: 0, isRunning: false, knownSession: false }), false);
+assert.equal(shouldActivateProjectSession({ liveMessageCount: 1 }), true);
+assert.equal(shouldActivateProjectSession({ persistedMessageCount: 1 }), true);
+assert.equal(shouldActivateProjectSession({ isRunning: true }), true);
+assert.equal(shouldActivateProjectSession({ knownSession: true }), true);
 
 const invalidStorage = memoryStorage();
 invalidStorage.setItem("writeagent_project_session", JSON.stringify({

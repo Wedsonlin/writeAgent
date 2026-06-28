@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 from langchain.agents.middleware.types import ModelResponse
 from langchain_core.messages import AIMessage
@@ -20,6 +21,7 @@ from agent_core.factory import (
 import agent_core.factory as factory_module
 from artifacts.manifest import ArtifactManifest
 from artifacts.schemas import ArtifactMeta
+from delegation.discovery import AgentDiscovery
 from middleware.guardrails import check_command
 from middleware.trace import TraceMiddleware
 from project_store.ledger import ProgressLedger
@@ -58,11 +60,11 @@ def test_runtime_config_model_and_project_layout(monkeypatch, tmp_path):
 
 
 def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
-    captured = {}
+    calls = []
 
     def fake_create_deep_agent(**kwargs):
-        captured.update(kwargs)
-        return {"agent": "fake"}
+        calls.append(kwargs)
+        return {"agent": kwargs["name"], "subagents": kwargs.get("subagents", [])}
 
     cfg = RuntimeConfig(repo_root=Path.cwd(), workspace_root=tmp_path / ".writeagent")
     agent = create_write_agent(
@@ -72,7 +74,10 @@ def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
         model="fake-model",
     )
 
-    assert agent == {"agent": "fake"}
+    captured = calls[-1]
+    calls_by_name = {call["name"]: call for call in calls}
+
+    assert agent["agent"] == "writeAgent"
     assert captured["context_schema"] is AgentRuntimeContext
     assert {tool.name for tool in captured["tools"]} == {
         "ask_user",
@@ -80,7 +85,6 @@ def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
         "update_artifact_manifest",
         "update_progress",
         "inspect_progress",
-        "delegate_to_agent",
         "search_knowledge",
         "extract_sources",
     }
@@ -92,7 +96,24 @@ def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
     assert captured["interrupt_on"]["ask_user"]["allowed_decisions"] == ["respond"]
     assert captured["interrupt_on"]["execute_bash"] is False
     assert captured["subagents"]
+    root_subagent_names = {subagent["name"] for subagent in captured["subagents"]}
+    assert "literature-paper-reader-agent" not in root_subagent_names
+    assert "content-section-writer-agent" not in root_subagent_names
+    assert "literature-review-agent" in root_subagent_names
+    assert "content-generation-agent" in root_subagent_names
+
+    assert {
+        subagent["name"]
+        for subagent in calls_by_name["literature-review-agent"]["subagents"]
+    } == {"literature-paper-reader-agent"}
+    assert {
+        subagent["name"]
+        for subagent in calls_by_name["content-generation-agent"]["subagents"]
+    } == {"content-section-writer-agent"}
+
     for subagent in captured["subagents"]:
+        if "middleware" not in subagent:
+            continue
         middleware_names = {mw.name for mw in subagent["middleware"]}
         assert {
             "writeagent_workflow_gate",
@@ -106,6 +127,84 @@ def test_agent_factory_registers_core_tools_and_project_context(tmp_path):
     for tool in captured["tools"]:
         schema_model = tool.args_schema or tool.get_input_schema()
         assert "runtime" not in schema_model.model_json_schema().get("properties", {})
+
+
+def test_agent_discovery_rejects_unknown_child_subagent(tmp_path):
+    config_path = tmp_path / "agents.yaml"
+    config_path.write_text(
+        """
+version: 1
+agents:
+  - id: parent
+    routing: subagent
+    capability: parent
+    subagent:
+      name: parent-agent
+      description: Parent
+      prompt_file: prompt.md
+      children:
+        - missing-agent
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unknown child subagent missing-agent"):
+        AgentDiscovery.load(config_path, skill_pack_root=tmp_path, repo_root=tmp_path)
+
+
+def test_agent_discovery_rejects_self_child_subagent(tmp_path):
+    config_path = tmp_path / "agents.yaml"
+    config_path.write_text(
+        """
+version: 1
+agents:
+  - id: parent
+    routing: subagent
+    capability: parent
+    subagent:
+      name: parent-agent
+      description: Parent
+      prompt_file: prompt.md
+      children:
+        - parent-agent
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="cannot list itself as a child"):
+        AgentDiscovery.load(config_path, skill_pack_root=tmp_path, repo_root=tmp_path)
+
+
+def test_agent_discovery_rejects_child_cycles(tmp_path):
+    config_path = tmp_path / "agents.yaml"
+    config_path.write_text(
+        """
+version: 1
+agents:
+  - id: parent
+    routing: subagent
+    capability: parent
+    subagent:
+      name: parent-agent
+      description: Parent
+      prompt_file: prompt.md
+      children:
+        - child-agent
+  - id: child
+    routing: subagent
+    capability: child
+    subagent:
+      name: child-agent
+      description: Child
+      prompt_file: prompt.md
+      children:
+        - parent-agent
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="cycle"):
+        AgentDiscovery.load(config_path, skill_pack_root=tmp_path, repo_root=tmp_path)
 
 
 def test_ensure_project_state_async_runs_outside_event_loop(monkeypatch, tmp_path):

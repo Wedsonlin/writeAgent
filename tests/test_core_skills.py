@@ -5,6 +5,7 @@ import subprocess
 import sys
 import zipfile
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 
 SKILLS = Path("skill_packs") / "academic-paper-writing" / "skills"
@@ -108,6 +109,248 @@ def test_polish_script_requires_agent_polished_markdown(tmp_path):
 
     assert payload["artifact_type"] == "polished_draft"
     assert "polished_markdown" in payload["error"]["fields"]
+
+
+def test_journal_template_docx_uses_fixed_pt_line_spacing(tmp_path, monkeypatch):
+    from tools import document_export
+
+    def skip_pdf(*args, **kwargs):
+        return {
+            "status": {"status": "unavailable", "path": None, "reason": "skipped in unit test"},
+            "path": None,
+        }
+
+    monkeypatch.setattr(document_export, "_export_pdf", skip_pdf)
+    markdown = (
+        "# 测试论文标题\n\n"
+        "## 摘要\n\n"
+        "这是一段用于验证软件学报模板导出的正文，包含中文、AI Infrastructure 和引用标记[1]。\n\n"
+        "## 参考文献\n\n"
+        "[1] 作者. 测试文献[J]. 软件学报, 2025.\n"
+    )
+
+    exported = document_export.export_markdown_document(
+        markdown,
+        tmp_path / "paper",
+        template_profile=document_export.JOS_TEMPLATE_PROFILE,
+    )
+
+    spacings = _docx_paragraph_spacings(Path(exported["docx_path"]))
+    assert spacings
+    assert all(spacing.get(f"{{{_WORD_NS['w']}}}line") != "2880" for spacing in spacings)
+    assert any(spacing.get(f"{{{_WORD_NS['w']}}}line") == "240" for spacing in spacings)
+    title_spacing = _docx_style_spacing(Path(exported["docx_path"]), "Title")
+    assert title_spacing
+    assert title_spacing.get(f"{{{_WORD_NS['w']}}}line") == "480"
+    assert exported["template_conformance_report"]["checks"].get("body_line_spacing_matches_template") is True
+
+
+def test_journal_template_docx_adds_jos_front_matter(tmp_path, monkeypatch):
+    from tools import document_export
+
+    def skip_pdf(*args, **kwargs):
+        return {
+            "status": {"status": "unavailable", "path": None, "reason": "skipped in unit test"},
+            "path": None,
+        }
+
+    monkeypatch.setattr(document_export, "_export_pdf", skip_pdf)
+    exported = document_export.export_markdown_document(
+        "# 测试论文标题\n\n## 摘要\n\n摘要正文。\n\n**关键词**：AI；系统\n\n## 1 引言\n\n正文内容[1]。\n\n## 参考文献\n\n1. 作者. 题名[J]. 2025.\n",
+        tmp_path / "paper",
+        template_profile=document_export.JOS_TEMPLATE_PROFILE,
+    )
+
+    texts = _docx_paragraph_texts(Path(exported["docx_path"]))
+    assert any("软件学报 ISSN 1000-9825" in text for text in texts)
+    assert any("E-mail: jos@iscas.ac.cn" in text for text in texts)
+    assert any("作者信息待补充" in text for text in texts)
+    assert any(text.startswith("摘  要:") for text in texts)
+    assert any(text.startswith("中图法分类号:") for text in texts)
+    assert any(text.startswith("中文引用格式:") for text in texts)
+    assert any(text.startswith("英文引用格式:") for text in texts)
+    assert any(text.startswith("Abstract:") for text in texts)
+    assert _docx_paragraph_has_shading(Path(exported["docx_path"]), "中文引用格式:")
+    assert any(text.startswith("[1] 作者.") for text in texts)
+    assert exported["template_conformance_report"]["checks"].get("reference_numbers_not_superscript") is True
+    assert not any(text == "摘要" for text in texts)
+    title_colors = _docx_paragraph_run_colors(Path(exported["docx_path"]), "测试论文标题")
+    assert title_colors
+    assert set(title_colors) <= {"000000", None}
+    assert not _docx_style_has_paragraph_border(Path(exported["docx_path"]), "Title")
+
+
+def test_journal_template_docx_matches_requested_front_matter_typography(tmp_path, monkeypatch):
+    from tools import document_export
+
+    def skip_pdf(*args, **kwargs):
+        return {
+            "status": {"status": "unavailable", "path": None, "reason": "skipped in unit test"},
+            "path": None,
+        }
+
+    monkeypatch.setattr(document_export, "_export_pdf", skip_pdf)
+    exported = document_export.export_markdown_document(
+        "# 测试论文标题：中文（示例）\n\n"
+        "## 摘要\n\n"
+        "摘要正文，包含中文标点；以及“引号”和（括号）。\n\n"
+        "**关键词**：AI；系统\n\n"
+        "## 1 引言\n\n"
+        "正文内容，继续测试中文标点。\n\n"
+        "## 参考文献\n\n"
+        "1. 作者. 题名[J]. 2025.\n",
+        tmp_path / "paper",
+        template_profile=document_export.JOS_TEMPLATE_PROFILE,
+    )
+    docx_path = Path(exported["docx_path"])
+
+    assert _docx_paragraph_alignment(docx_path, "测试论文标题:中文(示例)") == "left"
+    assert _docx_paragraph_run_sizes(docx_path, "测试论文标题:中文(示例)") == ["28"]
+    assert set(_docx_paragraph_east_asia_fonts(docx_path, "摘  要:")) <= {"KaiTi"}
+    assert set(_docx_paragraph_east_asia_fonts(docx_path, "作者信息待补充")) <= {"FangSong"}
+    assert set(_docx_paragraph_east_asia_fonts(docx_path, "(单位信息待补充)")) <= {"SimSun"}
+    assert _docx_paragraph_run_sizes(docx_path, "(单位信息待补充)") == ["16"]
+    assert all(size == "15" for size in _docx_runs_with_text_sizes(docx_path, "软件学报 ISSN 1000-9825"))
+    assert not _docx_has_header_text(docx_path)
+
+    combined_text = "\n".join(_docx_paragraph_texts(docx_path))
+    assert not any(mark in combined_text for mark in "，。；：（）“”")
+    assert "摘要正文,包含中文标点;以及\"引号\"和(括号)." in combined_text
+
+
+_WORD_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+
+
+def _docx_paragraph_texts(docx_path: Path) -> list[str]:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    return ["".join(node.text or "" for node in paragraph.findall(".//w:t", _WORD_NS)) for paragraph in root.findall(".//w:p", _WORD_NS)]
+
+
+def _docx_paragraph_run_colors(docx_path: Path, paragraph_text: str) -> list[str | None]:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    for paragraph in root.findall(".//w:p", _WORD_NS):
+        text = "".join(node.text or "" for node in paragraph.findall(".//w:t", _WORD_NS))
+        if text != paragraph_text:
+            continue
+        colors = []
+        for run in paragraph.findall("w:r", _WORD_NS):
+            color = run.find("w:rPr/w:color", _WORD_NS)
+            colors.append(color.attrib.get(f"{{{_WORD_NS['w']}}}val") if color is not None else None)
+        return colors
+    return []
+
+
+def _docx_paragraph_alignment(docx_path: Path, paragraph_text: str) -> str | None:
+    paragraph = _find_docx_paragraph(docx_path, paragraph_text)
+    if paragraph is None:
+        return None
+    alignment = paragraph.find("w:pPr/w:jc", _WORD_NS)
+    return alignment.attrib.get(f"{{{_WORD_NS['w']}}}val") if alignment is not None else None
+
+
+def _docx_paragraph_run_sizes(docx_path: Path, paragraph_text: str) -> list[str | None]:
+    paragraph = _find_docx_paragraph(docx_path, paragraph_text)
+    if paragraph is None:
+        return []
+    sizes = []
+    for run in paragraph.findall("w:r", _WORD_NS):
+        if not "".join(node.text or "" for node in run.findall("w:t", _WORD_NS)):
+            continue
+        size = run.find("w:rPr/w:sz", _WORD_NS)
+        sizes.append(size.attrib.get(f"{{{_WORD_NS['w']}}}val") if size is not None else None)
+    return sizes
+
+
+def _docx_paragraph_east_asia_fonts(docx_path: Path, text_prefix: str) -> list[str | None]:
+    paragraph = _find_docx_paragraph(docx_path, text_prefix, startswith=True)
+    if paragraph is None:
+        return []
+    fonts = []
+    for run in paragraph.findall("w:r", _WORD_NS):
+        if not "".join(node.text or "" for node in run.findall("w:t", _WORD_NS)):
+            continue
+        r_fonts = run.find("w:rPr/w:rFonts", _WORD_NS)
+        fonts.append(r_fonts.attrib.get(f"{{{_WORD_NS['w']}}}eastAsia") if r_fonts is not None else None)
+    return fonts
+
+
+def _docx_runs_with_text_sizes(docx_path: Path, text_prefix: str) -> list[str | None]:
+    paragraph = _find_docx_paragraph(docx_path, text_prefix, startswith=True)
+    if paragraph is None:
+        return []
+    sizes = []
+    for run in paragraph.findall("w:r", _WORD_NS):
+        if not "".join(node.text or "" for node in run.findall("w:t", _WORD_NS)):
+            continue
+        size = run.find("w:rPr/w:sz", _WORD_NS)
+        sizes.append(size.attrib.get(f"{{{_WORD_NS['w']}}}val") if size is not None else None)
+    return sizes
+
+
+def _docx_has_header_text(docx_path: Path) -> bool:
+    with zipfile.ZipFile(docx_path) as archive:
+        header_names = [name for name in archive.namelist() if name.startswith("word/header") and name.endswith(".xml")]
+        for name in header_names:
+            root = ET.fromstring(archive.read(name))
+            if "".join(node.text or "" for node in root.findall(".//w:t", _WORD_NS)).strip():
+                return True
+    return False
+
+
+def _find_docx_paragraph(docx_path: Path, text: str, *, startswith: bool = False) -> ET.Element | None:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    for paragraph in root.findall(".//w:p", _WORD_NS):
+        paragraph_text = "".join(node.text or "" for node in paragraph.findall(".//w:t", _WORD_NS))
+        if paragraph_text == text or (startswith and paragraph_text.startswith(text)):
+            return paragraph
+    return None
+
+
+def _docx_paragraph_spacings(docx_path: Path, *, style_id: str | None = None) -> list[dict[str, str]]:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    spacings = []
+    for paragraph in root.findall(".//w:p", _WORD_NS):
+        paragraph_style = paragraph.find("w:pPr/w:pStyle", _WORD_NS)
+        if style_id is not None and (
+            paragraph_style is None or paragraph_style.attrib.get(f"{{{_WORD_NS['w']}}}val") != style_id
+        ):
+            continue
+        spacing = paragraph.find("w:pPr/w:spacing", _WORD_NS)
+        if spacing is not None:
+            spacings.append(dict(spacing.attrib))
+    return spacings
+
+
+def _docx_style_spacing(docx_path: Path, style_id: str) -> dict[str, str] | None:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/styles.xml"))
+    style = root.find(f".//w:style[@w:styleId='{style_id}']", _WORD_NS)
+    if style is None:
+        return None
+    spacing = style.find("w:pPr/w:spacing", _WORD_NS)
+    return dict(spacing.attrib) if spacing is not None else None
+
+
+def _docx_style_has_paragraph_border(docx_path: Path, style_id: str) -> bool:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/styles.xml"))
+    style = root.find(f".//w:style[@w:styleId='{style_id}']", _WORD_NS)
+    return style is not None and style.find("w:pPr/w:pBdr", _WORD_NS) is not None
+
+
+def _docx_paragraph_has_shading(docx_path: Path, text_prefix: str) -> bool:
+    with zipfile.ZipFile(docx_path) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    for paragraph in root.findall(".//w:p", _WORD_NS):
+        text = "".join(node.text or "" for node in paragraph.findall(".//w:t", _WORD_NS))
+        if not text.startswith(text_prefix):
+            continue
+        return paragraph.find("w:pPr/w:shd", _WORD_NS) is not None
+    return False
 
 
 def _run_skill(

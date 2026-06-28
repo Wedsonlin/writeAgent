@@ -180,6 +180,37 @@ input {
   justify-content: flex-end;
 }
 
+.session-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.session-switcher label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.session-switcher select {
+  width: min(260px, 34vw);
+  min-width: 170px;
+  height: 31px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.session-switcher select:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .header-link {
   display: inline-flex;
   align-items: center;
@@ -513,6 +544,11 @@ input {
 /* ── Chat panel ──────────────────────────────────────────────────── */
 .chat-panel-shell {
   position: relative;
+}
+
+.status-error {
+  color: var(--accent-red);
+  background: var(--accent-red-light);
 }
 
 .chat-panel {
@@ -1075,8 +1111,13 @@ input {
 }
 
 /* ── Subagent card ───────────────────────────────────────────────── */
-.subagent-card {
+.subagent-card-stack {
   max-width: 820px;
+  display: grid;
+  gap: 8px;
+}
+
+.subagent-card {
   display: flex;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
@@ -1141,6 +1182,47 @@ input {
 .subagent-status .status-dot {
   width: 6px;
   height: 6px;
+}
+
+.subagent-activity {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-height: 30px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-soft) 74%, white);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.subagent-activity span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.subagent-activity-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--accent-blue);
+}
+
+.subagent-activity.tool .subagent-activity-dot {
+  background: var(--accent-amber, #d97706);
+}
+
+.subagent-children {
+  display: grid;
+  gap: 8px;
+  margin-left: 18px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-light);
 }
 
 .subagent-body p {
@@ -1419,6 +1501,13 @@ input {
   color: var(--text-muted);
 }
 
+.input-actions {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .send-btn {
   display: inline-flex;
   align-items: center;
@@ -1453,6 +1542,43 @@ input {
   height: 16px;
 }
 
+.terminate-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 98px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(158, 48, 48, 0.24);
+  border-radius: var(--radius-sm);
+  background: var(--accent-red-light);
+  color: var(--accent-red);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.terminate-btn:hover:not(:disabled) {
+  background: var(--accent-red);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(158, 48, 48, 0.22);
+}
+
+.terminate-btn:disabled {
+  border-color: var(--border);
+  background: var(--border-light);
+  color: var(--text-muted);
+  cursor: wait;
+}
+
+.terminate-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 720px) {
   .app-shell {
@@ -1464,6 +1590,17 @@ input {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .header-actions,
+  .session-switcher,
+  .session-switcher select {
+    width: 100%;
+  }
+
+  .session-switcher {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .stage-row {
@@ -1498,7 +1635,15 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .input-actions {
+    flex-direction: row;
+  }
+
   .send-btn {
-    justify-self: end;
+    width: 100%;
+  }
+
+  .terminate-btn {
+    width: 100%;
   }
 }

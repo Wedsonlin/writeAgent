@@ -1,6 +1,13 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useStream } from "@langchain/react";
-import { agentUrl, fetchCaseRequirement } from "./api/workflow";
+import {
+  agentUrl,
+  fetchCaseRequirement,
+  fetchProjectSessionMessages,
+  fetchProjectSessions,
+  registerProjectSession,
+  saveProjectSessionMessages,
+} from "./api/workflow";
 import { ChatPanel } from "./components/ChatPanel";
 import { InterruptCard, type ResumeTarget } from "./components/InterruptCard";
 import { WorkflowProgress } from "./components/WorkflowProgress";
@@ -13,10 +20,16 @@ import {
   ensureProjectSession,
   normalizeThreadId,
   projectNameForThread,
+  projectSessionFromApi,
   projectRootForProject,
   saveProjectSession,
+  sessionDisplayLabel,
+  shouldActivateProjectSession,
+  sortProjectSessions,
   type ProjectSession,
 } from "./lib/projectSession";
+import { messagesForDisplay } from "./lib/sessionMessages";
+import { shouldShowTerminateGeneration, terminateGeneration } from "./lib/streamControl";
 import { extractThreadStreamInterrupts, mergeInterrupts } from "./lib/threadInterrupts";
 import type { WorkflowMeta, WorkflowProgressPayload } from "./types/workflow";
 import "./styles.css";
@@ -26,8 +39,14 @@ export default function App() {
   const [caseLoadError, setCaseLoadError] = useState<string | null>(null);
   const [isLoadingCase, setIsLoadingCase] = useState(false);
   const [projectSession, setProjectSession] = useState<ProjectSession>(() => ensureProjectSession());
+  const [sessions, setSessions] = useState<ProjectSession[]>([]);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [persistedMessages, setPersistedMessages] = useState<unknown[]>([]);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
   const [resumingInterruptKey, setResumingInterruptKey] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const [terminateError, setTerminateError] = useState<string | null>(null);
   const stream = useStream({
     apiUrl: agentUrl,
     assistantId: "writeagent",
@@ -51,11 +70,16 @@ export default function App() {
     threadId: normalizeThreadId(projectSession.threadId) ?? undefined,
   } as never);
   const messages = stream.messages ?? [];
+  const displayedMessages = useMemo(
+    () => messagesForDisplay(messages, persistedMessages),
+    [messages, persistedMessages],
+  );
   const subagents = useMemo(
     () => Array.from((stream.subagents ?? new Map()).values()) as unknown as Record<string, unknown>[],
     [stream.subagents],
   );
   const isRunning = Boolean(stream.isLoading);
+  const showTerminateGeneration = shouldShowTerminateGeneration({ isRunning, isTerminating });
   const streamInterrupts = (stream as { interrupts?: unknown[] }).interrupts ?? [];
   const threadInterrupts = extractThreadStreamInterrupts((stream as { getThread?: () => unknown }).getThread?.());
   const liveInterrupts = threadInterrupts.length > 0 ? threadInterrupts : streamInterrupts;
@@ -68,13 +92,96 @@ export default function App() {
   const activeInterrupt = isRunning
     ? undefined
     : mergedInterrupts.find((interrupt) => pendingInterruptKey(interrupt) !== resumingInterruptKey);
-  const workflow = useWorkflowProgress(isRunning, projectSession.projectName);
-  const toolResults = useToolResults(messages);
+  const isKnownSession = sessions.some((session) => session.projectName === projectSession.projectName);
+  const projectSessionActive = shouldActivateProjectSession({
+    liveMessageCount: messages.length,
+    persistedMessageCount: persistedMessages.length,
+    isRunning,
+    knownSession: isKnownSession,
+  });
+  const workflow = useWorkflowProgress(isRunning, projectSessionActive ? projectSession.projectName : null);
+  const toolResults = useToolResults(displayedMessages);
   const streamError = stringifyError(stream.error);
   const displayedProgress = useMemo(
     () => deriveProgressFromTools(workflow.meta, workflow.progress, toolResults, projectSession.projectName),
     [workflow.meta, workflow.progress, toolResults, projectSession.projectName],
   );
+  const availableSessions = useMemo(
+    () => uniqueProjectSessions(sortProjectSessions([...(projectSessionActive ? [projectSession] : []), ...sessions])),
+    [projectSession, projectSessionActive, sessions],
+  );
+  const selectableSessions = availableSessions.length > 0 ? availableSessions : [projectSession];
+
+  useEffect(() => {
+    let cancelled = false;
+    async function syncSessions() {
+      try {
+        const saved = projectSessionActive
+          ? projectSessionFromApi(await registerProjectSession(projectSession)) ?? projectSession
+          : null;
+        const next = (await fetchProjectSessions()).map((record) => projectSessionFromApi(record));
+        if (!cancelled) {
+          setSessions(uniqueProjectSessions(sortProjectSessions([saved, ...(projectSessionActive ? [projectSession] : []), ...next])));
+          setSessionsError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSessions((current) => uniqueProjectSessions(sortProjectSessions([...(projectSessionActive ? [projectSession] : []), ...current])));
+          setSessionsError(stringifyError(error) ?? "无法同步会话历史");
+        }
+      }
+    }
+    void syncSessions();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectSession.threadId, projectSession.projectName, projectSession.createdAt, projectSessionActive]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPersistedMessages([]);
+    async function loadMessages() {
+      try {
+        const next = await fetchProjectSessionMessages(projectSession.projectName);
+        if (!cancelled) {
+          setPersistedMessages(next);
+          setMessagesError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessagesError(stringifyError(error) ?? "无法加载会话历史");
+        }
+      }
+    }
+    void loadMessages();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectSession.projectName]);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    async function persistMessages() {
+      try {
+        await saveProjectSessionMessages(projectSession.projectName, messages);
+        if (!cancelled) {
+          setPersistedMessages(messages);
+          setMessagesError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessagesError(stringifyError(error) ?? "无法保存会话历史");
+        }
+      }
+    }
+    void persistMessages();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectSession.projectName, messages]);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -82,6 +189,7 @@ export default function App() {
     if (!text) {
       return;
     }
+    setTerminateError(null);
     setInput("");
     void stream.submit(
       { messages: [{ role: "human", content: text }] },
@@ -97,6 +205,16 @@ export default function App() {
     const next = createProjectSession();
     saveProjectSession(next);
     setProjectSession(next);
+    window.location.reload();
+  }
+
+  function handleSelectSession(projectName: string) {
+    const selected = availableSessions.find((session) => session.projectName === projectName);
+    if (!selected || selected.projectName === projectSession.projectName) {
+      return;
+    }
+    saveProjectSession(selected);
+    setProjectSession(selected);
     window.location.reload();
   }
 
@@ -127,6 +245,22 @@ export default function App() {
     }
   }
 
+  async function handleTerminateGeneration() {
+    if (isTerminating) {
+      return;
+    }
+    setTerminateError(null);
+    setIsTerminating(true);
+    try {
+      await terminateGeneration(stream);
+    } catch (error) {
+      setTerminateError(stringifyError(error) ?? "无法终止当前生成，请稍后重试。");
+      console.error("writeAgent termination error", error);
+    } finally {
+      setIsTerminating(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -142,6 +276,22 @@ export default function App() {
           </div>
         </div>
         <div className="header-actions">
+          <div className="session-switcher">
+            <label htmlFor="session-select">历史会话</label>
+            <select
+              id="session-select"
+              value={projectSession.projectName}
+              onChange={(event) => handleSelectSession(event.target.value)}
+              disabled={isRunning || selectableSessions.length <= 1}
+              title={projectSession.projectName}
+            >
+              {selectableSessions.map((session) => (
+                <option key={session.projectName} value={session.projectName}>
+                  {sessionDisplayLabel(session)}
+                </option>
+              ))}
+            </select>
+          </div>
           <button className="header-link header-button" type="button" onClick={handleNewSession}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 1 1-2.64-6.36" />
@@ -187,9 +337,11 @@ export default function App() {
           </svg>
           工具结果：{toolResults.length}
         </span>
+        {sessionsError ? <span className="status-item status-error">{sessionsError}</span> : null}
+        {messagesError ? <span className="status-item status-error">{messagesError}</span> : null}
       </section>
 
-      <ChatPanel messages={messages} subagents={subagents} />
+      <ChatPanel messages={displayedMessages} stream={stream} subagents={subagents} />
 
       {activeInterrupt ? (
         <InterruptCard
@@ -212,6 +364,7 @@ export default function App() {
             {isLoadingCase ? "载入中" : "载入 case 需求"}
           </button>
           {caseLoadError ? <span className="input-error">{caseLoadError}</span> : null}
+          {terminateError ? <span className="input-error">{terminateError}</span> : null}
           <textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -224,16 +377,45 @@ export default function App() {
             }}
           />
         </div>
-        <button className="send-btn" type="submit" disabled={isRunning || !input.trim()}>
-          发送
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
+        <div className="input-actions">
+          {showTerminateGeneration ? (
+            <button
+              className="terminate-btn"
+              type="button"
+              disabled={isTerminating}
+              onClick={() => void handleTerminateGeneration()}
+              title="取消服务端当前 run 并停止接收生成"
+            >
+              {isTerminating ? "终止中..." : "终止生成"}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="6" y="6" width="12" height="12" rx="1" />
+              </svg>
+            </button>
+          ) : null}
+          <button className="send-btn" type="submit" disabled={isRunning || isTerminating || !input.trim()}>
+            发送
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
       </form>
     </main>
   );
+}
+
+function uniqueProjectSessions(sessions: ProjectSession[]): ProjectSession[] {
+  const seen = new Set<string>();
+  const unique: ProjectSession[] = [];
+  for (const session of sessions) {
+    if (seen.has(session.projectName)) {
+      continue;
+    }
+    seen.add(session.projectName);
+    unique.push(session);
+  }
+  return unique;
 }
 
 function runtimeContext(projectSession: ProjectSession) {

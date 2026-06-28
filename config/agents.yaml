@@ -21,6 +21,8 @@ agents:
       name: literature-review-agent
       description: Build the literature landscape and produce the literature_report artifact.
       prompt_file: config/agent_prompts/literature-review.md
+      children:
+        - literature-paper-reader-agent
       skills:
         - skill_packs/academic-paper-writing/skills/literature-review
 
@@ -54,6 +56,8 @@ agents:
       name: content-generation-agent
       description: Generate section-level paper draft content and produce the draft artifact.
       prompt_file: config/agent_prompts/content-generation.md
+      children:
+        - content-section-writer-agent
       skills:
         - skill_packs/academic-paper-writing/skills/paper-content-generation
 

@@ -19,6 +19,7 @@ class DiscoveredAgents:
     subagents: list[dict[str, Any]] = field(default_factory=list)
     registry: AgentRegistry = field(default_factory=AgentRegistry)
     capability_routing: dict[str, str] = field(default_factory=dict)
+    child_subagent_names: set[str] = field(default_factory=set)
     disable_general_purpose: bool = False
 
 
@@ -40,6 +41,7 @@ class AgentDiscovery:
         payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
         config = AgentsConfig.model_validate(payload)
         repo = Path(repo_root).resolve()
+        cls._validate_subagent_children(config.agents)
 
         discovered = DiscoveredAgents(disable_general_purpose=config.disable_general_purpose)
         subagent_names: set[str] = set()
@@ -52,11 +54,49 @@ class AgentDiscovery:
                 if name in subagent_names:
                     raise ValueError(f"duplicate subagent name: {name}")
                 subagent_names.add(name)
+                discovered.child_subagent_names.update(subagent.get("children") or [])
                 discovered.subagents.append(subagent)
             else:
                 discovered.registry.register(cls._build_registration(agent))
 
         return discovered
+
+    @staticmethod
+    def _validate_subagent_children(agents: list[AgentConfig]) -> None:
+        child_map: dict[str, list[str]] = {}
+        for agent in agents:
+            if agent.routing != "subagent" or agent.subagent is None:
+                continue
+            name = agent.subagent.name
+            if name in child_map:
+                raise ValueError(f"duplicate subagent name: {name}")
+            child_map[name] = list(agent.subagent.children)
+
+        for parent, children in child_map.items():
+            for child in children:
+                if child == parent:
+                    raise ValueError(f"subagent {parent} cannot list itself as a child")
+                if child not in child_map:
+                    raise ValueError(f"unknown child subagent {child} referenced by {parent}")
+
+        visiting: set[str] = set()
+        visited: set[str] = set()
+
+        def visit(name: str, path: list[str]) -> None:
+            if name in visited:
+                return
+            if name in visiting:
+                cycle_start = path.index(name)
+                cycle = " -> ".join([*path[cycle_start:], name])
+                raise ValueError(f"subagent child cycle detected: {cycle}")
+            visiting.add(name)
+            for child in child_map.get(name, []):
+                visit(child, [*path, child])
+            visiting.remove(name)
+            visited.add(name)
+
+        for name in child_map:
+            visit(name, [name])
 
     @staticmethod
     def _register_capability(discovered: DiscoveredAgents, agent: AgentConfig) -> None:
@@ -76,6 +116,7 @@ class AgentDiscovery:
             "name": agent.subagent.name,
             "description": agent.subagent.description,
             "system_prompt": prompt_path.read_text(encoding="utf-8"),
+            "children": list(agent.subagent.children),
         }
         if skills:
             subagent["skills"] = skills

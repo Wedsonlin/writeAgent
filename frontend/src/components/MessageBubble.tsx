@@ -1,8 +1,12 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { normalizeMessage, type ToolCallSummary } from "../lib/messageNormalize";
 import { shouldHideToolResult } from "../lib/toolDisplay";
 import { ToolCallCard } from "./ToolCallCard";
 import { ToolResultCard } from "./ToolResultCard";
+
+export { normalizeMessage };
+export type { ToolCallSummary };
 
 interface Props {
   message: unknown;
@@ -101,72 +105,3 @@ export function MessageBubble({ message }: Props) {
   );
 }
 
-export interface ToolCallSummary {
-  id?: string;
-  name?: string;
-  args?: unknown;
-}
-
-export function normalizeMessage(message: unknown): {
-  role: string;
-  content: string;
-  name?: string;
-  parsed?: unknown;
-  toolCalls: ToolCallSummary[];
-} {
-  if (!message || typeof message !== "object") {
-    return { role: "unknown", content: String(message ?? ""), toolCalls: [] };
-  }
-  const value = message as Record<string, unknown>;
-  const getType = typeof value._getType === "function" ? value._getType : undefined;
-  const role = String(value.role ?? value.type ?? getType?.call(value) ?? "message");
-  return {
-    role,
-    content: contentToText(value.content),
-    name: typeof value.name === "string" ? value.name : undefined,
-    parsed: parseJson(contentToText(value.content)),
-    toolCalls: normalizeToolCalls(value.tool_calls ?? value.toolCalls),
-  };
-}
-
-function normalizeToolCalls(raw: unknown): ToolCallSummary[] {
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-  return raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
-    .map((item) => ({
-      id: typeof item.id === "string" ? item.id : undefined,
-      name: typeof item.name === "string" ? item.name : undefined,
-      args: item.args,
-    }));
-}
-
-function contentToText(content: unknown): string {
-  if (typeof content === "string") {
-    return content;
-  }
-  if (Array.isArray(content)) {
-    return content
-      .map((item) => {
-        if (typeof item === "string") {
-          return item;
-        }
-        if (item && typeof item === "object" && "text" in item) {
-          return String((item as { text: unknown }).text);
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n");
-  }
-  return content == null ? "" : JSON.stringify(content, null, 2);
-}
-
-function parseJson(content: string): unknown | undefined {
-  try {
-    return JSON.parse(content);
-  } catch {
-    return undefined;
-  }
-}

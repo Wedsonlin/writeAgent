@@ -9,10 +9,8 @@ export function useWorkflowProgress(isLoading: boolean, projectId?: string | nul
 
   const refresh = useCallback(async () => {
     try {
-      const [nextMeta, nextProgress] = await Promise.all([
-        fetchWorkflowMeta(),
-        fetchWorkflowProgress(projectId),
-      ]);
+      const nextMeta = await fetchWorkflowMeta();
+      const nextProgress = projectId ? await fetchWorkflowProgress(projectId) : null;
       setMeta(nextMeta);
       setProgress(nextProgress);
       setError(null);

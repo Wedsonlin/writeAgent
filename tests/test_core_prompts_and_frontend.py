@@ -6,6 +6,7 @@ from pathlib import Path
 def test_system_prompt_keeps_coordinator_delegation_contract():
     text = Path("skill_packs/academic-paper-writing/system_prompt.md").read_text(encoding="utf-8")
 
+    assert "delegate_to_agent" not in text
     assert "projects/default/artifacts" not in text
     assert "current project's `artifacts/` directory" in text
     assert "01-论文写作任务书.md" in text
@@ -22,10 +23,13 @@ def test_system_prompt_keeps_coordinator_delegation_contract():
 
 
 def test_agent_prompts_keep_recovery_contracts_for_content_and_polish():
+    literature = Path("config/agent_prompts/literature-review.md").read_text(encoding="utf-8")
     content = Path("config/agent_prompts/content-generation.md").read_text(encoding="utf-8")
     section_writer = Path("config/agent_prompts/content-section-writer.md").read_text(encoding="utf-8")
     polish = Path("config/agent_prompts/polish-plagiarism.md").read_text(encoding="utf-8")
 
+    assert "delegate_to_agent" not in literature
+    assert "delegate_to_agent" not in content
     assert "Do not run `paper-content-generation/scripts/run.py` when `draft` is absent" in content
     assert "Do not ask the user to provide an external draft" in content
     assert "citation reconciliation gate" in content

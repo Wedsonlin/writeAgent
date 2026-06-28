@@ -7,16 +7,35 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from agent_core.config import RuntimeConfig
 from artifacts.schemas import ArtifactMeta
 from artifacts.manifest import ArtifactManifest
 from project_store.ledger import ProgressLedger
+from project_store.sessions import (
+    ProjectSessionMessagesUpsert,
+    ProjectSessionUpsert,
+    list_project_sessions,
+    load_project_session_messages,
+    save_project_session_messages,
+    upsert_project_session,
+)
 from workflows.loader import load_workflow
 
 
 app = FastAPI(title="writeAgent frontend support")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://[::1]:5173",
+    ],
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/api/health")
@@ -65,6 +84,29 @@ def workflow_progress(project_id: str | None = None) -> dict[str, Any]:
         "stages": [stage.model_dump() for stage in ledger.stages.values()],
         "artifacts": [meta.model_dump() for meta in manifest.artifacts.values()],
     }
+
+
+@app.get("/api/sessions")
+def project_sessions() -> dict[str, Any]:
+    return {"sessions": [session.model_dump() for session in list_project_sessions(_config())]}
+
+
+@app.post("/api/sessions")
+def save_project_session(payload: ProjectSessionUpsert) -> dict[str, Any]:
+    try:
+        return upsert_project_session(_config(), payload).model_dump()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/sessions/{project_id}/messages")
+def project_session_messages(project_id: str) -> dict[str, Any]:
+    return load_project_session_messages(_config(), project_id).model_dump()
+
+
+@app.put("/api/sessions/{project_id}/messages")
+def save_session_messages(project_id: str, payload: ProjectSessionMessagesUpsert) -> dict[str, Any]:
+    return save_project_session_messages(_config(), project_id, payload).model_dump()
 
 
 @app.get("/api/case/original-requirement")
